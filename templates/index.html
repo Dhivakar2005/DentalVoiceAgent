@@ -37,7 +37,7 @@
                 <div class="nav-links">
                     <a href="#home">Home</a>
                     <a href="#services">Services</a>
-                    <a href="#booking">Book Now</a>
+                    <a href="#" onclick="openBookingModal(); return false;">Book Now</a>
                     <a href="#contact">Contact</a>
                 </div>
             </div>
@@ -58,14 +58,14 @@
                         Book appointments instantly using just your voice - no forms, no hassle.
                     </p>
                     <div class="hero-buttons">
-                        <button class="btn btn-primary" onclick="scrollToBooking()">
+                        <button class="btn btn-primary" onclick="openBookingModal()">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                                 <path fill-rule="evenodd"
                                     d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
                                     clip-rule="evenodd" />
                             </svg>
-                            Start Voice Booking
+                             Book an Appointment
                         </button>
                         <button class="btn btn-secondary" onclick="scrollToServices()">
                             Learn More
@@ -140,88 +140,6 @@
         </div>
     </section>
 
-    <!-- Voice Assistant Booking Section -->
-    <section id="booking" class="booking-section">
-        <div class="container">
-            <h2 class="section-title">Book Your Appointment</h2>
-            <p class="section-subtitle">Talk to our AI assistant - it's like chatting with a friend!</p>
-
-            <div class="voice-assistant-container">
-                <div class="assistant-card">
-                    <!-- Status Indicator -->
-                    <div class="assistant-status" id="assistantStatus">
-                        <div class="status-dot"></div>
-                        <span id="statusText">Ready to help</span>
-                    </div>
-
-                    <!-- Conversation Display -->
-                    <div class="conversation-container" id="conversationContainer">
-                        <div class="welcome-message">
-                            <div class="assistant-avatar">🤖</div>
-                            <div class="message-bubble agent-message">
-                                <p>Hi! I'm your dental assistant. I can help you:</p>
-                                <ul>
-                                    <li>📅 Book a new appointment</li>
-                                    <li>♻️ Reschedule existing appointments</li>
-                                    <li>❌ Cancel appointments</li>
-                                </ul>
-                                <p>Click "Start" below to begin!</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Input Area -->
-                    <div class="input-area">
-                        <div class="input-controls">
-                            <input type="text" id="messageInput" placeholder="Type your message or use voice..."
-                                disabled />
-                            <button class="btn-icon" id="voiceBtn" title="Use voice input" disabled>
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                                    <path
-                                        d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                                </svg>
-                            </button>
-                            <button class="btn-icon btn-send" id="sendBtn" title="Send message" disabled>
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="action-buttons">
-                            <button class="btn btn-primary" id="startBtn">
-                                Start Assistant
-                            </button>
-                            <button class="btn btn-secondary" id="resetBtn" style="display: none;">
-                                Reset Conversation
-                            </button>
-                            <button class="btn btn-danger" id="endBtn" style="display: none;">
-                                End Session
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Tips -->
-                <div class="tips-card">
-                    <h3>💡 Quick Tips</h3>
-                    <div class="tip-item">
-                        <strong>Booking:</strong> "Book an appointment for tomorrow at 10 AM"
-                    </div>
-                    <div class="tip-item">
-                        <strong>Rescheduling:</strong> "Reschedule my appointment on Jan 10 to Jan 15"
-                    </div>
-                    <div class="tip-item">
-                        <strong>Canceling:</strong> "Cancel my appointment on January 10"
-                    </div>
-                    <div class="tip-item">
-                        <strong>Natural Language:</strong> You can speak naturally - the AI understands!
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- Contact Section -->
     <section id="contact" class="contact-section">
@@ -288,6 +206,80 @@
             </div>
         </div>
     </footer>
+
+    <!-- Voice Booking Modal -->
+    <div id="bookingModal" class="modal">
+        <div class="modal-overlay" onclick="closeBookingModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Voice Assistant Booking</h2>
+                <button class="modal-close" onclick="closeBookingModal()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="voice-assistant-modal-container">
+                    <div class="assistant-card-modal">
+                        <!-- Status Indicator -->
+                        <div class="assistant-status" id="assistantStatusModal">
+                            <div class="status-dot" id="statusDotModal"></div>
+                            <span id="statusTextModal">Ready to help</span>
+                        </div>
+
+                        <!-- Conversation Display -->
+                        <div class="conversation-container" id="conversationContainerModal">
+                            <div class="welcome-message">
+                                <div class="assistant-avatar">🤖</div>
+                                <div class="message-bubble agent-message">
+                                    <p>Hi! I'm your dental assistant. I can help you:</p>
+                                    <ul>
+                                        <li>📅 Book a new appointment</li>
+                                        <li>♻️ Reschedule existing appointments</li>
+                                        <li>❌ Cancel appointments</li>
+                                    </ul>
+                                    <p>Click "Start" below to begin!</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input Area -->
+                        <div class="input-area">
+                            <div class="input-controls">
+                                <input type="text" id="messageInputModal"
+                                    placeholder="Type your message or use voice..." disabled />
+                                <button class="btn-icon" id="voiceBtnModal" title="Use voice input" disabled>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <path
+                                            d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                                        <path
+                                            d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                                    </svg>
+                                </button>
+                                <button class="btn-icon btn-send" id="sendBtnModal" title="Send message" disabled>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="action-buttons">
+                                <button class="btn btn-primary" id="startBtnModal">
+                                    Start Assistant
+                                </button>
+                                <button class="btn btn-secondary" id="resetBtnModal" style="display: none;">
+                                    Reset Conversation
+                                </button>
+                                <button class="btn btn-danger" id="endBtnModal" style="display: none;">
+                                    End Session
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

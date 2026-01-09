@@ -27,11 +27,8 @@ except ImportError:
 
 
 # CONFIG 
-# IMPORTANT: Replace with your own Gemini API key
-# Get your API key from: https://makersuite.google.com/app/apikey
-# For production, use environment variables: os.getenv('GEMINI_API_KEY')
-GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"
-MODEL_NAME = "gemini-2.0-flash-exp"
+GEMINI_API_KEY = "AIzaSyDrmGgh3E5_riJrbtJQNmVSRPVT8xaFRUk"
+MODEL_NAME = "gemini-2.5-flash"
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 TIMEZONE = "Asia/Kolkata"
 APPOINTMENT_DURATION_MIN = 10
@@ -467,6 +464,9 @@ User: {text}"""
             result["name"] = name_match.group(1).strip()
         elif self.awaiting_field == "phone" and phone_match:
             result["phone"] = re.sub(r'\D', '', phone_match.group())
+        elif self.awaiting_field == "reason":
+            # When asking for reason, take the entire text as the reason
+            result["reason"] = text.strip()
         else:
             # No specific field awaited, extract everything
             result["name"] = name_match.group(1).strip() if name_match else None
@@ -487,7 +487,7 @@ User: {text}"""
         intent = self.state.get("intent")
         
         if intent == "book" or not intent:
-            required = ["name", "phone", "date", "time"]
+            required = ["name", "phone", "date", "time", "reason"]
             missing = [f for f in required if not self.state.get(f)]
             return missing
         
@@ -523,10 +523,11 @@ User: {text}"""
                 prompts = {
                     "name": "What's your name?",
                     "phone": f"Great{' ' + self.state['name'] if self.state['name'] else ''}! What's your phone number?",
-                    "date": "What date is your current appointment?",
-                    "time": "What time is your current appointment?",
+                    "date": "What date is your appointment?",
+                    "time": "What time is your appointment?",
                     "new_date": "What's the new date you'd like?",
-                    "new_time": "What's the new time you'd like?"
+                    "new_time": "What's the new time you'd like?",
+                    "reason": "What's the reason for your visit?"
                 }
                 self.awaiting_field = missing[0]
                 return prompts.get(missing[0], "I need some more information.")

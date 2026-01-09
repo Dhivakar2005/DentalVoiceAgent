@@ -3,22 +3,25 @@
 // ===========================
 
 class VoiceAssistant {
-    constructor() {
+    constructor(suffix = '') {
         this.sessionId = null;
         this.isActive = false;
         this.isListening = false;
         this.recognition = null;
+        this.suffix = suffix; // '' for main page, 'Modal' for modal
 
-        // DOM Elements
-        this.startBtn = document.getElementById('startBtn');
-        this.resetBtn = document.getElementById('resetBtn');
-        this.endBtn = document.getElementById('endBtn');
-        this.messageInput = document.getElementById('messageInput');
-        this.voiceBtn = document.getElementById('voiceBtn');
-        this.sendBtn = document.getElementById('sendBtn');
-        this.conversationContainer = document.getElementById('conversationContainer');
-        this.statusText = document.getElementById('statusText');
-        this.statusDot = document.querySelector('.status-dot');
+        // DOM Elements - append suffix to IDs for modal support
+        this.startBtn = document.getElementById('startBtn' + suffix);
+        this.resetBtn = document.getElementById('resetBtn' + suffix);
+        this.endBtn = document.getElementById('endBtn' + suffix);
+        this.messageInput = document.getElementById('messageInput' + suffix);
+        this.voiceBtn = document.getElementById('voiceBtn' + suffix);
+        this.sendBtn = document.getElementById('sendBtn' + suffix);
+        this.conversationContainer = document.getElementById('conversationContainer' + suffix);
+        this.statusText = document.getElementById('statusText' + suffix);
+        this.statusDot = suffix === 'Modal'
+            ? document.getElementById('statusDot' + suffix)
+            : document.querySelector('.status-dot');
 
         this.initializeEventListeners();
         this.initializeSpeechRecognition();
@@ -341,14 +344,45 @@ function scrollToServices() {
 }
 
 // ===========================
+// MODAL FUNCTIONS
+// ===========================
+
+let modalVoiceAssistant = null;
+
+function openBookingModal() {
+    const modal = document.getElementById('bookingModal');
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+
+    // Initialize modal voice assistant if not already initialized
+    if (!modalVoiceAssistant) {
+        modalVoiceAssistant = new VoiceAssistant('Modal');
+    }
+}
+
+function closeBookingModal() {
+    const modal = document.getElementById('bookingModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = ''; // Restore scrolling
+
+    // End session if active
+    if (modalVoiceAssistant && modalVoiceAssistant.isActive) {
+        modalVoiceAssistant.endSession();
+    }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeBookingModal();
+    }
+});
+
+// ===========================
 // INITIALIZE APP
 // ===========================
 
-let voiceAssistant;
-
 document.addEventListener('DOMContentLoaded', () => {
-    voiceAssistant = new VoiceAssistant();
-
     // Load voices for speech synthesis
     if ('speechSynthesis' in window) {
         window.speechSynthesis.onvoiceschanged = () => {
@@ -356,5 +390,5 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    console.log('Voice Assistant initialized');
+    console.log('Voice Assistant Modal initialized');
 });
