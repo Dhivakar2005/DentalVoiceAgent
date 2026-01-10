@@ -40,6 +40,7 @@ Thumbs.db
 # Sensitive Files - DO NOT COMMIT
 credentials.json
 token.pickle
+sheets_config.json
 .env
 
 # API Keys - Keep these secret!
