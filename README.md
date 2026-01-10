@@ -7,9 +7,11 @@ A modern dental appointment booking website powered by AI voice assistant techno
 - **🎤 Voice-First Interface**: Natural language voice commands powered by Web Speech API
 - **🤖 AI-Powered**: Gemini AI for intelligent conversation and intent parsing
 - **📅 Google Calendar Integration**: Automatic appointment management
+- **📊 Google Sheets Appointment Log**: Every booking is logged as a separate historical entry
+- **👥 Smart Patient Recognition**: Skips redundant questions for returning patients using Customer IDs
+- **🔍 View Appointments**: Patients can list all their upcoming bookings by ID
+- **⏰ Business Hours**: Strict validation for Mon-Sat, 9 AM - 5 PM
 - **💬 Dual Input**: Support for both voice and text input
-- **📱 Responsive Design**: Works seamlessly on desktop and mobile devices
-- **🎨 Modern UI**: Beautiful glassmorphism design with smooth animations
 
 ## 🚀 Quick Start
 
@@ -17,6 +19,7 @@ A modern dental appointment booking website powered by AI voice assistant techno
 
 - Python 3.8 or higher
 - Google Calendar API credentials
+- Google Sheets API enabled
 - Gemini API key (Google AI)
 
 ### Installation
@@ -36,23 +39,12 @@ A modern dental appointment booking website powered by AI voice assistant techno
    - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
    - Create a new API key
    - Open `app.py` and replace `YOUR_GEMINI_API_KEY_HERE` with your actual API key
-   
-   ```python
-   GEMINI_API_KEY = "your-actual-api-key-here"
-   ```
 
-4. **Set up Google Calendar API**
+4. **Set up Google APIs**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select existing one
-   - Enable Google Calendar API
+   - Enable **Google Calendar API** and **Google Sheets API**
    - Create OAuth 2.0 credentials (Desktop app)
-   - Download the credentials and save as `credentials.json` in the project root
-   - You can use `credentials.json.example` as a template
-
-5. **First Run Authorization**
-   - On first run, you'll be prompted to authorize the application
-   - A browser window will open for Google Calendar authorization
-   - A `token.pickle` file will be created for future use
+   - Download as `credentials.json` in the project root
 
 ### Running the Application
 
@@ -63,88 +55,55 @@ A modern dental appointment booking website powered by AI voice assistant techno
 
 2. **Open your browser**
    - Navigate to `http://localhost:5000`
-   - The website will load automatically
-
-3. **Start booking!**
-   - Click "Start Voice Assistant" button
-   - Speak or type your request
-   - Follow the conversation flow
 
 ## 🎯 Usage Examples
 
-### Booking an Appointment
+### Booking as a New Patient
 
-**Voice/Text Input:**
-```
-"Book an appointment for tomorrow at 10 AM"
-```
+**Agent:** "Are you a new or old patient?"
+**You:** "New"
+**Agent:** "What's your name?"
+... (Agent asks for Name, Phone, Date, Time, Reason)
+**Agent:** "Confirmed! Your Customer ID is **CUST001**. Please save this!"
 
-**Agent Response:**
-```
-What's your name?
-```
+### Booking as a Returning Patient
 
-**You:**
-```
-"John Smith"
-```
+**Agent:** "Are you a new or old patient?"
+**You:** "Old"
+**Agent:** "Please tell me your customer ID."
+**You:** "CUST001"
+**Agent:** "Welcome back, John! Is your phone still 555-1234? Say 'yes' to confirm."
+**You:** "Yes"
+**Agent:** "What date would you like to book for?" (Skips Name/Phone!)
 
-**Agent:**
-```
-Great John! What's your phone number?
-```
+### Viewing Your Appointments
 
-**You:**
-```
-"555-1234"
-```
-
-**Agent:**
-```
-Perfect! Your appointment is confirmed for John Smith on 2026-01-06 at 10:00 AM.
-```
-
-### Rescheduling an Appointment
-
-**Voice/Text Input:**
-```
-"Reschedule my appointment"
-```
-
-**Agent will ask for:**
-- Your name
-- Phone number
-- Current appointment date/time
-- New desired date/time
+**You:** "Show me my appointments"
+**Agent:** "What is your customer ID?"
+**You:** "CUST001"
+**Agent:** "I found 2 appointments for you: Jan 10 at 10:00 AM and Jan 15 at 2:00 PM."
 
 ### Canceling an Appointment
 
-**Voice/Text Input:**
-```
-"Cancel my appointment on January 10"
-```
-
-**Agent will ask for:**
-- Your name
-- Phone number
-- Appointment date/time for verification
+**You:** "Cancel my appointment on Jan 10"
+**Agent:** (Confirmed) "I have cleared those details from your schedule."
+*Note: Cancellation clears the Date/Time fields in the log but keeps your customer record.*
 
 ## 🏗️ Project Structure
 
 ```
 Dental/
-├── app.py                  # Core voice agent logic (DO NOT MODIFY)
+├── app.py                  # Core agent logic & Gemini parsing
+├── google_sheets_manager.py # Google Sheets Appointment Log integration
 ├── server.py              # Flask web server
 ├── requirements.txt       # Python dependencies
-├── credentials.json       # Google Calendar API credentials
-├── token.pickle          # Google Calendar auth token
+├── credentials.json       # Google API credentials
+├── token.pickle          # Auth token
 ├── templates/
-│   └── index.html        # Main website template
+│   └── index.html        # Main UI
 └── static/
-    ├── css/
-    │   └── style.css     # Styling and design system
-    └── js/
-        └── app.js        # Frontend JavaScript logic
+    ├── css/style.css     # Premium Glassmorphism styling
+    └── js/app.js         # Frontend voice/UI logic
 ```
 
 ## 🔧 Technical Details
@@ -153,25 +112,25 @@ Dental/
 
 - **Flask**: Web server framework
 - **DentalVoiceAgent**: Core AI agent with stateful conversation
-- **Google Calendar API**: Appointment management
-- **Gemini AI**: Natural language understanding
-- **pyttsx3**: Text-to-speech (CLI mode)
-- **SpeechRecognition**: Speech-to-text (CLI mode)
+- **Google Sheets Manager**: Appointment logging and retrieval (Appointment Log model)
+- **Google Calendar API**: Real-time calendar synchronization
+- **Gemini AI**: Natural language understanding and intent parsing
+- **pyttsx3 / SpeechRecognition**: Local voice support (CLI/Debug mode)
 
 ### Frontend (JavaScript)
 
 - **Web Speech API**: Browser-based voice input/output
 - **Fetch API**: Communication with Flask backend
 - **Vanilla JavaScript**: No framework dependencies
-- **Responsive CSS**: Mobile-first design
+- **Premium CSS**: Glassmorphism and responsive design
 
 ### AI Capabilities
 
-- **Intent Recognition**: Book, reschedule, cancel
-- **Entity Extraction**: Name, phone, date, time, reason
-- **Context Awareness**: Maintains conversation state
-- **Date Parsing**: Handles multiple date formats
-- **Time Normalization**: Converts to 12-hour format
+- **Intent Recognition**: Book, Reschedule, Cancel, and **View Appointments**
+- **Smart Logic**: Automatic skipping of known patient fields (Name, Phone)
+- **Historical Logging**: Every appointment is tracked as a unique row in Google Sheets
+- **Strict Validation**: Business hours (9 AM - 5 PM) and date/time normalization
+- **Context Awareness**: Remembers patient type and identity throughout the session
 
 ## 🎨 Design Features
 

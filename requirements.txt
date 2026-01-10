@@ -9,6 +9,8 @@ sounddevice
 soundfile
 scipy
 numpy
+gspread
+google-auth
 
 # Web server dependencies
 Flask==3.0.0
