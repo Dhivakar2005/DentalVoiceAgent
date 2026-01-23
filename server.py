@@ -1,15 +1,20 @@
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
+from functools import wraps
 import os
 import uuid
 import json
 from datetime import datetime
 from app import DentalVoiceAgent, VoiceInterface
+from database_manager import DatabaseManager
 import threading
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)
 CORS(app)
+
+# Initialize Database
+db = DatabaseManager(app)
 
 # Store active sessions
 sessions = {}
@@ -60,10 +65,108 @@ class WebVoiceAgent:
         self.agent.reset_state()
         self.conversation_history = []
 
+# AUTHENTICATION DECORATORS
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({"success": False, "error": "Login required"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'role' not in session or session['role'] != 'admin':
+            return jsonify({"success": False, "error": "Admin access required"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+# AUTHENTICATION ROUTES
+@app.route('/signin', methods=['GET', 'POST'])
+def signin():
+    if request.method == 'POST':
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+        
+        user = db.authenticate_user(email, password)
+        if user:
+            session['user_id'] = str(user['_id'])
+            session['email'] = user['email']
+            session['name'] = user['name']
+            session['role'] = user.get('role', 'user')
+            return jsonify({
+                "success": True, 
+                "message": "Login successful",
+                "role": session['role']
+            })
+        return jsonify({"success": False, "error": "Invalid email or password"}), 401
+    
+    return render_template('login.html', type='signin')
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+        name = data.get('name')
+        
+        success, message = db.create_user(email, password, name)
+        if success:
+            return jsonify({"success": True, "message": message})
+        return jsonify({"success": False, "error": message}), 400
+    
+    return render_template('login.html', type='signup')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return jsonify({"success": True, "message": "Logged out successfully"})
+
 @app.route('/')
 def index():
     """Serve the main website"""
-    return render_template('index.html')
+    if 'user_id' not in session:
+        return render_template('login.html', type='signin')
+    return render_template('index.html', user_name=session.get('name'))
+
+# ADMIN DASHBOARD ROUTES
+@app.route('/admin')
+def admin_dashboard():
+    """Serve the admin dashboard"""
+    if 'role' not in session or session['role'] != 'admin':
+        return render_template('login.html', type='signin', error="Admin access required")
+    return render_template('admin.html')
+
+@app.route('/api/admin/data')
+@admin_required
+def get_admin_data():
+    """Fetch data for admin dashboard from Google Sheets and Calendar"""
+    try:
+        # Use a temporary agent to get sheet/calendar managers
+        agent = DentalVoiceAgent(use_voice=False)
+        
+        # 1. Get appointments from Google Sheets
+        appointments = agent.sheets.get_all_customers() # This now gets from Master or log depending on logic, but let's get all appointment rows
+        
+        # 2. Get events from Google Calendar
+        now = datetime.utcnow().isoformat() + 'Z'
+        events_result = agent.calendar.service.events().list(
+            calendarId='primary', timeMin=now,
+            maxResults=50, singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+        events = events_result.get('items', [])
+        
+        return jsonify({
+            "success": True,
+            "appointments": appointments,
+            "calendar_events": events
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/start-session', methods=['POST'])
 def start_session():

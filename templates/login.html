@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smile Dental | Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --h-primary: 243;
+            --p-500: hsl(var(--h-primary), 75%, 48%);
+            --p-600: hsl(var(--h-primary), 75%, 38%);
+            --n-900: hsl(220, 30%, 8%);
+            --n-800: hsl(220, 25%, 15%);
+            --n-50: hsl(220, 15%, 97%);
+            --n-400: hsl(220, 10%, 55%);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(20px);
+            --error: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--n-900);
+            color: var(--n-50);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image:
+                radial-gradient(circle at 0% 0%, hsla(var(--h-primary), 60%, 20%, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, hsla(243, 60%, 20%, 0.1) 0%, transparent 50%);
+        }
+
+        .auth-card {
+            background-color: var(--n-800);
+            width: 100%;
+            max-width: 420px;
+            padding: 3rem;
+            border-radius: 32px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: var(--glass-blur);
+            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.5);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .logo h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, white 30%, var(--p-500) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px;
+            border-radius: 16px;
+            margin-bottom: 2.5rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: var(--n-400);
+            cursor: pointer;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab-btn.active {
+            background: var(--p-500);
+            color: white;
+            box-shadow: 0 10px 20px -5px hsla(var(--h-primary), 75%, 48%, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--n-400);
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: var(--p-500);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 1.1rem;
+            background: linear-gradient(135deg, var(--p-500), var(--p-600));
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.4s;
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+            box-shadow: 0 15px 30px -5px hsla(243, 75%, 48%, 0.4);
+        }
+
+        .msg {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            padding: 14px;
+            border-radius: 12px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .msg-error {
+            color: var(--error);
+            background: hsla(0, 75%, 60%, 0.1);
+            display: block;
+        }
+
+        .msg-success {
+            color: var(--success);
+            background: hsla(160, 75%, 60%, 0.1);
+            display: block;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-card">
+        <div class="logo">
+            <h1>Smile Dental</h1>
+        </div>
+
+        <div class="tab-buttons">
+            <button class="tab-btn active" id="tab-signin">Sign In</button>
+            <button class="tab-btn" id="tab-signup">Create Account</button>
+        </div>
+
+        <form id="auth-form">
+            <div id="name-group" class="form-group hidden">
+                <label>Full Name</label>
+                <input type="text" id="name" placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="email" required placeholder="john@example.com">
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="btn-submit" id="submit-btn"
+                style="letter-spacing: 0.02em;">Authenticate</button>
+        </form>
+
+        <div id="message" class="msg"></div>
+    </div>
+
+    <script>
+        const authForm = document.getElementById('auth-form');
+        const tabSignin = document.getElementById('tab-signin');
+        const tabSignup = document.getElementById('tab-signup');
+        const nameGroup = document.getElementById('name-group');
+        const submitBtn = document.getElementById('submit-btn');
+        const messageDiv = document.getElementById('message');
+
+        let mode = 'signin';
+
+        tabSignin.addEventListener('click', () => {
+            mode = 'signin';
+            tabSignin.classList.add('active');
+            tabSignup.classList.remove('active');
+            nameGroup.classList.add('hidden');
+            submitBtn.innerText = 'Authenticate';
+            messageDiv.style.display = 'none';
+        });
+
+        tabSignup.addEventListener('click', () => {
+            mode = 'signup';
+            tabSignup.classList.add('active');
+            tabSignin.classList.remove('active');
+            nameGroup.classList.remove('hidden');
+            submitBtn.innerText = 'Register Account';
+            messageDiv.style.display = 'none';
+        });
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const name = document.getElementById('name').value;
+
+            const endpoint = mode === 'signin' ? '/signin' : '/signup';
+            const payload = { email, password };
+            if (mode === 'signup') payload.name = name;
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.innerText = data.message;
+                    messageDiv.className = 'msg msg-success';
+                    messageDiv.style.display = 'block';
+
+                    if (mode === 'signin') {
+                        setTimeout(() => {
+                            window.location.href = data.role === 'admin' ? '/admin' : '/';
+                        }, 800);
+                    } else {
+                        setTimeout(() => tabSignin.click(), 1200);
+                    }
+                } else {
+                    messageDiv.innerText = data.error;
+                    messageDiv.className = 'msg msg-error';
+                    messageDiv.style.display = 'block';
+                }
+            } catch (error) {
+                messageDiv.innerText = 'System anomaly detected. Please try again.';
+                messageDiv.className = 'msg msg-error';
+                messageDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+
+</html>

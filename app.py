@@ -14,7 +14,7 @@ AUDIO_BACKEND = "sounddevice"
 import pyttsx3
 TTS_AVAILABLE = True
 
-import google.generativeai as genai
+import requests
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -28,8 +28,8 @@ except ImportError:
 
 
 # CONFIG 
-GEMINI_API_KEY = "AIzaSyDrmGgh3E5_riJrbtJQNmVSRPVT8xaFRUk"
-MODEL_NAME = "gemini-2.5-flash"
+OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_MODEL = "qwen2.5-coder:3b"
 SCOPES = [
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/spreadsheets"
@@ -199,8 +199,6 @@ class DentalVoiceAgent:
         self.calendar = GoogleCalendarManager()
         self.sheets = GoogleSheetsManager()
         self.voice = VoiceInterface(use_voice=use_voice)
-        genai.configure(api_key=GEMINI_API_KEY)
-        self.model = genai.GenerativeModel(MODEL_NAME)
         
         # Conversation state to preserve information
         self.state = {
@@ -224,8 +222,8 @@ class DentalVoiceAgent:
         self.state["customer_confirmed"] = False
         self.awaiting_field = None
 
-    def parse_with_gemini(self, text, context_state=None):
-        """Enhanced Gemini parser with context awareness"""
+    def parse_with_llm(self, text, context_state=None):
+        """Enhanced LLM parser with context awareness using Llama 3"""
         today = datetime.now(ZoneInfo(TIMEZONE))
         
         # Handle customer confirmation
@@ -273,7 +271,6 @@ class DentalVoiceAgent:
                 return {"patient_type": "new"}
                 
             # Try to extract customer ID (format: CUST###)
-            import re
             match = re.search(r'CUST\d{3}', text.upper())
             if match:
                 return {"intent": self.state.get("intent"), "customer_id": match.group()}
@@ -297,7 +294,7 @@ class DentalVoiceAgent:
             elif self.awaiting_field == "customer_id":
                 awaiting_info += " Extract customer ID in format CUST### or detect if user is new customer."
         
-        prompt = f"""You are a dental appointment assistant. Extract booking information from user input.
+        system_prompt = f"""You are a dental appointment assistant. Extract booking information from user input.
 
 CRITICAL INSTRUCTIONS:
 1. Identify intent: "book", "reschedule", "cancel", or "view_appointments"
@@ -325,19 +322,38 @@ Return ONLY this JSON (no markdown, no explanation):
   "new_date": "YYYY-MM-DD or empty (NEW date for reschedule)",
   "new_time": "HH:MM AM/PM or empty (NEW time for reschedule)",
   "reason": "extracted reason or empty"
-}}
+}}"""
 
-User: {text}"""
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text}
+        ]
 
         try:
-            response = self.model.generate_content(prompt)
-            raw = response.text.strip()
+            # Make request to Ollama API
+            ollama_url = f"{OLLAMA_BASE_URL}/api/chat"
+            payload = {
+                "model": OLLAMA_MODEL,
+                "messages": messages,
+                "stream": False,
+                "options": {
+                    "num_predict": 500
+                }
+            }
+            
+            response = requests.post(ollama_url, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            # Extract the response content
+            result = response.json()
+            raw = result.get("message", {}).get("content", "").strip()
+            
             raw = re.sub(r"^```json\s*", "", raw, flags=re.I)
             raw = re.sub(r"```\s*$", "", raw).strip()
             parsed = json.loads(raw)
             return self.validate_and_fix(parsed, text)
         except Exception as e:
-            print(f"[Gemini Error] {e}")
+            print(f"[LLM Error] {e}")
             return self.fallback_parse(text)
 
     def validate_and_fix(self, parsed, original):
@@ -567,7 +583,8 @@ User: {text}"""
                 self.state[key] = value
 
     def get_missing_fields(self):
-        """Determine what information is still needed based on intent"""
+        """Determine what information is still needed based on intent.
+        STRICT ENFORCEMENT: No null values allowed for required fields."""
         intent = self.state.get("intent")
         
         # 1. Ask patient type if unknown for ANY intent
@@ -584,17 +601,21 @@ User: {text}"""
             if not self.state.get("customer_confirmed"):
                 return ["customer_confirmation"]
             
-            # Once confirmed, skip name/phone for booking
+            # Once confirmed, we have name/phone from customer record
+            # But still need appointment details
             if intent == "book" or not intent:
-                required = ["date", "time", "reason"]
+                # STRICT: name, phone, date, time, reason (all required)
+                required = ["name", "phone", "date", "time", "reason"]
                 missing = [f for f in required if not self.state.get(f)]
                 return missing
             elif intent == "reschedule":
-                required = ["date", "time", "new_date", "new_time"]
+                # STRICT: name, phone, old date, old time, new date, new time (NO reason)
+                required = ["name", "phone", "date", "time", "new_date", "new_time"]
                 missing = [f for f in required if not self.state.get(f)]
                 return missing
             elif intent == "cancel":
-                required = ["date", "time"]
+                # STRICT: name, customer_id, date, time
+                required = ["name", "customer_id", "date", "time"]
                 missing = [f for f in required if not self.state.get(f)]
                 return missing
             elif intent == "view_appointments":
@@ -603,12 +624,18 @@ User: {text}"""
         # 3. Branch for NEW patient
         else:
             if intent == "book" or not intent:
+                # STRICT: name, phone, date, time, reason (all required)
                 required = ["name", "phone", "date", "time", "reason"]
                 missing = [f for f in required if not self.state.get(f)]
                 return missing
-            else:
-                # Reschedule/Cancel for new patient is unlikely but possible
-                required = ["name", "phone", "date", "time"] + (["new_date", "new_time"] if intent == "reschedule" else [])
+            elif intent == "reschedule":
+                # STRICT: name, phone, old date, old time, new date, new time (NO reason)
+                required = ["name", "phone", "date", "time", "new_date", "new_time"]
+                missing = [f for f in required if not self.state.get(f)]
+                return missing
+            elif intent == "cancel":
+                # STRICT: name, phone, date, time (new patients don't have customer_id yet)
+                required = ["name", "phone", "date", "time"]
                 missing = [f for f in required if not self.state.get(f)]
                 return missing
         
@@ -617,7 +644,7 @@ User: {text}"""
     def generate_response(self, text):
         try:
             # Parse with context
-            data = self.parse_with_gemini(text, self.state)
+            data = self.parse_with_llm(text, self.state)
             print(f"\n[DEBUG] Parsed: {json.dumps(data, indent=2)}")
             
             # Update state with new information
@@ -649,16 +676,46 @@ User: {text}"""
                         self.awaiting_field = "patient_type"
                         return "I couldn't find that ID. Are you sure you're an old patient? Please say 'new' or 'old'."
                 
-                # Default prompts for other fields
+                # Context-aware prompts based on intent
+                intent = self.state.get("intent")
+                
                 prompts = {
-                    "name": "What's your name?",
-                    "phone": f"Great{' ' + self.state['name'] if self.state['name'] else ''}! What's your phone number?",
-                    "date": "What date is the appointment?",
-                    "time": "What time is the appointment?",
-                    "new_date": "What's the new date you'd like?",
-                    "new_time": "What's the new time you'd like?",
-                    "reason": "What's the reason for your visit?"
+                    "name": "May I have your full name?",
+                    "phone": f"Thanks{', ' + self.state['name'] if self.state.get('name') else ''}! Could you please provide your phone number?",
+                    "reason": (
+                        "What is the reason for your visit? You may choose one of the following services or briefly describe your concern:\\n\\n"
+                        "• General Dental Checkup & Consultation\\n"
+                        "• Tooth Filling & Restoration\\n"
+                        "• Root Canal Treatment\\n"
+                        "• Braces & Teeth Alignment\\n"
+                        "• Gum Treatment (Scaling & Periodontal Care)\\n"
+                        "• Crowns, Bridges & Dentures\\n"
+                        "• Tooth Extraction & Oral Surgery\\n"
+                        "• Pediatric Dental Care (Child Dentistry)\\n"
+                        "• Oral Diagnosis & Dental X-rays\\n"
+                        "• Oral Lesion & Disease Evaluation\\n"
+                    )
                 }
+                
+                # Context-specific prompts for date/time
+                if field == "date":
+                    if intent == "reschedule" or intent == "cancel":
+                        prompts["date"] = "What is the CURRENT date of your existing appointment that you want to change?"
+                    else:
+                        prompts["date"] = "What date would you like to schedule the appointment for?"
+                
+                if field == "time":
+                    if intent == "reschedule" or intent == "cancel":
+                        prompts["time"] = "What is the CURRENT time of your existing appointment?"
+                    else:
+                        prompts["time"] = "What time works best for you?"
+                
+                if field == "new_date":
+                    prompts["new_date"] = "Great! Now, what NEW date would you like to reschedule to?"
+                
+                if field == "new_time":
+                    prompts["new_time"] = "And what NEW time would you like for this appointment?"
+
                 return prompts.get(field, f"Please provide your {field}.")
             
             # All fields collected - proceed with the action
@@ -671,7 +728,12 @@ User: {text}"""
             elif self.state["intent"] == "view_appointments":
                 return self.list_my_appointments(self.state)
             
-            return "How can I help you today?"
+            # If intent unknown but fields collected, default to booking
+            if self.state.get("name") and self.state.get("phone"):
+                self.state["intent"] = "book"
+                return self.book(self.state)
+            
+            return "I'd be happy to help you book, reschedule, or cancel an appointment. What would you like to do?"
             
         except Exception as e:
             print(f"[ERROR] {e}")
@@ -694,24 +756,33 @@ User: {text}"""
                 print(f"[Date Conversion Error] {e}")
                 return f"I'm sorry, I couldn't understand the time {d['time']} on {d['date']}. Could you please repeat that?"
 
+            # Validate 3-day booking window (current date + 3 days)
+            today = datetime.now(ZoneInfo(TIMEZONE)).replace(hour=0, minute=0, second=0, microsecond=0)
+            max_booking_date = today + timedelta(days=3)
+            appointment_date_only = start.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            if appointment_date_only < today:
+                return "I'm sorry, you cannot book appointments for past dates. Please choose a date from today onwards."
+            
+            if appointment_date_only > max_booking_date:
+                max_date_str = max_booking_date.strftime("%B %d, %Y")
+                return f"I'm sorry, you can only book appointments up to 3 days in advance. The latest available date is {max_date_str}. Would you like to choose a date within this range?"
+
             # Check business hours
             if not self.is_business_hours(start):
                 return "I'm sorry, our clinic is only open Monday to Saturday from 9:00 AM to 5:00 PM. Would you like to pick another time?"
 
-            # Handle customer ID - always log a new row
+            # Handle customer ID
             customer_id = d.get("customer_id")
             appointment_date = d['date']
             appointment_time = d['time']
             reason = d.get("reason", "")
             
             if not customer_id:
-                # Create NEW customer ID
+                # Generate NEW customer ID
                 customer_id = self.sheets.generate_customer_id()
-                self.sheets.log_appointment(customer_id, d["name"], d["phone"], appointment_date, appointment_time, reason)
                 id_message = f" Your customer ID is {customer_id}. Please save this for future bookings!"
             else:
-                # Existing customer - log new appointment with same ID
-                self.sheets.log_appointment(customer_id, d["name"], d["phone"], appointment_date, appointment_time, reason)
                 id_message = ""
             
             # Create calendar appointment
@@ -721,6 +792,9 @@ User: {text}"""
             
             if not result:
                 return "That time slot is taken. Would you like to try a different time?"
+            
+            # Log to Google Sheets ONLY ONCE after successful calendar creation
+            self.sheets.log_appointment(customer_id, d["name"], d["phone"], appointment_date, appointment_time, reason)
             
             response = f"Perfect! Your appointment is confirmed for {d['name']} on {d['date']} at {d['time']}.{id_message} See you then!"
             self.reset_state()
@@ -735,32 +809,72 @@ User: {text}"""
     def reschedule_appointment(self, d):
         """Reschedule appointment with name, phone verification"""
         try:
+            name = d.get("name")
+            phone = d.get("phone")
+            old_date = d.get("date")
+            old_time = d.get("time")
+
+            if not all([name, phone, old_date]):
+                return "I'm missing some details about your existing appointment. Could you provide your name, phone, and the current date of the appointment?"
+
             # Find the existing appointment using name, phone, and old date
-            event = self.calendar.find_appointment(d["name"], d["phone"], d["date"])
+            event = self.calendar.find_appointment(name, phone, old_date)
             
             if not event:
-                return f"I couldn't find an appointment for {d['name']} with phone {d['phone']} on {d['date']}. Please check the details."
+                return f"I couldn't find an appointment for {name} with phone {phone} on {old_date}. Please check the details."
             
             # Parse new datetime for validation
+            new_date = d.get("new_date")
+            new_time = d.get("new_time")
+            
+            if not new_date or not new_time:
+                return "I need to know both the new date and the new time you'd like to reschedule to."
+
             try:
-                new_start = datetime.strptime(f"{d['new_date']} {d['new_time']}", "%Y-%m-%d %I:%M %p")
+                # Robust cleaning similar to book()
+                if " " in new_date and not new_time:
+                    new_date, new_time = new_date.split(" ", 1)
+                
+                new_start = datetime.strptime(f"{new_date} {new_time}", "%Y-%m-%d %I:%M %p")
                 new_start = new_start.replace(tzinfo=ZoneInfo(TIMEZONE))
-            except Exception:
-                return f"I couldn't understand the new time {d['new_time']} on {d['new_date']}. Could you repeat that?"
+            except Exception as e:
+                print(f"[Reschedule Date Conversion Error] {e}")
+                return f"I couldn't understand the new time {new_time} on {new_date}. Could you please repeat that?"
+
+            # Validate 3-day booking window (current date + 3 days)
+            today = datetime.now(ZoneInfo(TIMEZONE)).replace(hour=0, minute=0, second=0, microsecond=0)
+            max_booking_date = today + timedelta(days=3)
+            new_appointment_date_only = new_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            if new_appointment_date_only < today:
+                return "I'm sorry, you cannot reschedule to a past date. Please choose a date from today onwards."
+            
+            if new_appointment_date_only > max_booking_date:
+                max_date_str = max_booking_date.strftime("%B %d, %Y")
+                return f"I'm sorry, you can only reschedule appointments up to 3 days in advance. The latest available date is {max_date_str}. Would you like to choose a date within this range?"
 
             # Check business hours
             if not self.is_business_hours(new_start):
                 return "I'm sorry, our clinic is only open Monday to Saturday from 9:00 AM to 5:00 PM. Please choose a different time."
             
-            # Update appointment log (find row and update Date/Time)
+            # Update appointment log (find row and update Date/Time in same row)
             if d.get("customer_id"):
-                self.sheets.update_appointment(d["customer_id"], d["date"], d["time"], d["new_date"], d["new_time"])
+                self.sheets.update_appointment(d["customer_id"], old_date, old_time, new_date, new_time)
             
-            # Attempt reschedule in calendar
-            if not self.calendar.reschedule(event["id"], new_start):
-                return f"Sorry, {d['new_date']} at {d['new_time']} isn't available. Would you like to try another time?"
+            # Delete old calendar event
+            self.calendar.cancel(event["id"])
             
-            response = f"Perfect! Your appointment has been rescheduled from {d['date']} at {d['time']} to {d['new_date']} at {d['new_time']}. See you then!"
+            # Create new calendar event with updated details
+            customer_id = d.get("customer_id", "")
+            reason = d.get("reason", "Rescheduled appointment")
+            result = self.calendar.create_appointment(
+                name, phone, new_start, reason, customer_id
+            )
+            
+            if not result:
+                return f"Sorry, {new_date} at {new_time} isn't available. Would you like to try another time?"
+            
+            response = f"Perfect! Your appointment has been rescheduled from {old_date} at {old_time} to {new_date} at {new_time}. See you then!"
             self.reset_state()
             return response
             
@@ -773,22 +887,36 @@ User: {text}"""
     def cancel_appointment(self, d):
         """Cancel appointment with name, phone verification"""
         try:
+            name = d.get("name")
+            phone = d.get("phone")
+            date = d.get("date")
+            time = d.get("time")
+
+            if not all([name, phone, date]):
+                return "I'm missing some details to cancel the appointment. Could you provide your name, phone, and the date you booked for?"
+
             # Find the appointment using name, phone, and date
-            event = self.calendar.find_appointment(d["name"], d["phone"], d["date"])
+            event = self.calendar.find_appointment(name, phone, date)
             
             if not event:
-                return f"I couldn't find an appointment for {d['name']} with phone {d['phone']} on {d['date']}. Please check the details."
+                return f"I couldn't find an appointment for {name} with phone {phone} on {date}. Please check the details."
             
             # Cancel the appointment in calendar
             self.calendar.cancel(event["id"])
             
             # Delete from appointment log if customer ID is available
             if d.get("customer_id"):
-                self.sheets.delete_appointment(d["customer_id"], d["date"], d["time"])
+                self.sheets.delete_appointment(d["customer_id"], date, time)
             
-            response = f"Your appointment on {d['date']} at {d['time']} has been cancelled. Is there anything else I can help you with?"
+            response = f"Your appointment on {date} at {time} has been cancelled. Is there anything else I can help you with?"
             self.reset_state()
             return response
+            
+        except Exception as e:
+            print(f"[CANCEL ERROR] {e}")
+            import traceback
+            traceback.print_exc()
+            return "I had trouble cancelling the appointment. Could you please verify the date and try again?"
             
         except Exception as e:
             print(f"[CANCEL ERROR] {e}")

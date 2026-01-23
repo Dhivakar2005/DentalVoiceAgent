@@ -12,8 +12,6 @@ class VoiceAssistant {
 
         // DOM Elements - append suffix to IDs for modal support
         this.startBtn = document.getElementById('startBtn' + suffix);
-        this.resetBtn = document.getElementById('resetBtn' + suffix);
-        this.endBtn = document.getElementById('endBtn' + suffix);
         this.messageInput = document.getElementById('messageInput' + suffix);
         this.voiceBtn = document.getElementById('voiceBtn' + suffix);
         this.sendBtn = document.getElementById('sendBtn' + suffix);
@@ -28,9 +26,7 @@ class VoiceAssistant {
     }
 
     initializeEventListeners() {
-        this.startBtn.addEventListener('click', () => this.startSession());
-        this.resetBtn.addEventListener('click', () => this.resetSession());
-        this.endBtn.addEventListener('click', () => this.endSession());
+        if (this.startBtn) this.startBtn.addEventListener('click', () => this.startSession());
         this.sendBtn.addEventListener('click', () => this.sendMessage());
         this.voiceBtn.addEventListener('click', () => this.toggleVoiceInput());
 
@@ -90,10 +86,7 @@ class VoiceAssistant {
                 this.sessionId = data.session_id;
                 this.isActive = true;
 
-                // Update UI
-                this.startBtn.style.display = 'none';
-                this.resetBtn.style.display = 'block';
-                this.endBtn.style.display = 'block';
+                if (this.startBtn) this.startBtn.style.display = 'none';
                 this.messageInput.disabled = false;
                 this.voiceBtn.disabled = false;
                 this.sendBtn.disabled = false;
@@ -262,17 +255,18 @@ class VoiceAssistant {
 
         const avatar = document.createElement('div');
         avatar.className = role === 'agent' ? 'assistant-avatar' : 'user-avatar';
-        avatar.textContent = role === 'agent' ? '🤖' : '👤';
+        avatar.textContent = role === 'agent' ? '✨' : '👤';
 
         const bubble = document.createElement('div');
         bubble.className = `message-bubble ${role}-message`;
 
-        // Convert newlines to paragraphs
-        const paragraphs = text.split('\n').filter(p => p.trim());
-        paragraphs.forEach(p => {
-            const para = document.createElement('p');
-            para.textContent = p;
-            bubble.appendChild(para);
+        // Handle text formatting
+        const lines = text.split('\n').filter(l => l.trim());
+        lines.forEach(line => {
+            const p = document.createElement('p');
+            // Basic strong/bold support for matching backend descriptions
+            p.innerHTML = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            bubble.appendChild(p);
         });
 
         messageGroup.appendChild(avatar);
@@ -280,21 +274,21 @@ class VoiceAssistant {
 
         this.conversationContainer.appendChild(messageGroup);
 
-        // Scroll to bottom
-        this.conversationContainer.scrollTop = this.conversationContainer.scrollHeight;
+        // Immersive scrolling
+        this.conversationContainer.scrollTo({
+            top: this.conversationContainer.scrollHeight,
+            behavior: 'smooth'
+        });
     }
 
     updateStatus(text, state) {
+        if (!this.statusText) return;
         this.statusText.textContent = text;
 
-        // Update status dot
+        // Update status dot with new premium animations
         this.statusDot.className = 'status-dot';
-        if (state === 'active' || state === 'listening') {
-            this.statusDot.classList.add('active');
-        }
-        if (state === 'listening') {
-            this.statusDot.classList.add('listening');
-        }
+        if (state === 'active') this.statusDot.classList.add('active');
+        if (state === 'listening' || state === 'loading') this.statusDot.classList.add('listening');
     }
 
     speakText(text) {
@@ -357,6 +351,13 @@ function openBookingModal() {
     // Initialize modal voice assistant if not already initialized
     if (!modalVoiceAssistant) {
         modalVoiceAssistant = new VoiceAssistant('Modal');
+        // Auto-start the session after a brief delay to ensure DOM is ready
+        setTimeout(() => {
+            modalVoiceAssistant.startSession();
+        }, 300);
+    } else if (!modalVoiceAssistant.isActive) {
+        // If assistant exists but session is not active, start it
+        modalVoiceAssistant.startSession();
     }
 }
 

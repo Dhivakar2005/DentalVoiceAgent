@@ -1,17 +1,47 @@
-# 🦷 Smile Dental - AI Voice Assistant
+# 🦷 Smile Dental - AI-Powered Dental Assistant Platform
 
-A modern dental appointment booking website powered by AI voice assistant technology. Book, reschedule, or cancel appointments using natural voice commands or text input.
+A premium, modern dental appointment management system with AI voice assistant, user authentication, and comprehensive admin dashboard. Built with cutting-edge glassmorphic UI design and powered by intelligent conversation technology.
 
-## ✨ Features
+## ✨ Key Features
 
-- **🎤 Voice-First Interface**: Natural language voice commands powered by Web Speech API
-- **🤖 AI-Powered**: Gemini AI for intelligent conversation and intent parsing
-- **📅 Google Calendar Integration**: Automatic appointment management
-- **📊 Google Sheets Appointment Log**: Every booking is logged as a separate historical entry
-- **👥 Smart Patient Recognition**: Skips redundant questions for returning patients using Customer IDs
-- **🔍 View Appointments**: Patients can list all their upcoming bookings by ID
-- **⏰ Business Hours**: Strict validation for Mon-Sat, 9 AM - 5 PM
-- **💬 Dual Input**: Support for both voice and text input
+### 🎤 **AI Voice Assistant**
+- Natural language voice commands powered by Web Speech API
+- Intelligent conversation flow with context awareness
+- Supports both voice and text input modes
+- Multi-language speech recognition
+
+### 👥 **User Management**
+- Secure authentication system (signup/login)
+- Role-based access control (User/Admin)
+- Customer ID system for permanent patient identification
+- Customer Master database for patient records
+
+### 📅 **Smart Appointment System**
+- **Booking**: Collects name, phone, date, time, and reason (all required)
+- **Rescheduling**: Updates same row in Google Sheets, deletes old calendar event
+- **Cancellation**: Removes entire row from Sheets and deletes calendar event
+- Strict field validation - no null values allowed
+- Business hours enforcement (Mon-Sat, 9 AM - 5 PM)
+- 3-day advance booking limit
+
+### 📊 **Data Management**
+- **Customer_Master Sheet**: Permanent patient records (ID, name, phone, creation date)
+- **Customers Sheet**: Appointment log with full booking history
+- Google Calendar integration with automatic event management
+- Real-time synchronization between Sheets and Calendar
+
+### 🎨 **Premium UI/UX**
+- Glassmorphic dark theme with HSL color tokens
+- Smooth animations and micro-interactions
+- Responsive design for all devices
+- Immersive agent interface with chat history scrolling
+- Modern typography using 'Outfit' font
+
+### 👨‍💼 **Admin Dashboard**
+- View all appointments and patient records
+- Calendar event monitoring
+- Modern "Command Center" aesthetic
+- Real-time data updates
 
 ## 🚀 Quick Start
 
@@ -20,14 +50,14 @@ A modern dental appointment booking website powered by AI voice assistant techno
 - Python 3.8 or higher
 - Google Calendar API credentials
 - Google Sheets API enabled
-- Gemini API key (Google AI)
+- Ollama with qwen2.5-coder:3b model (for local LLM)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/Dhivakar2005/DentalVoiceAgent.git
-   cd DentalVoiceAgent
+   cd Dental
    ```
 
 2. **Install dependencies**
@@ -35,10 +65,12 @@ A modern dental appointment booking website powered by AI voice assistant techno
    pip install -r requirements.txt
    ```
 
-3. **Set up Gemini API Key**
-   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Create a new API key
-   - Open `app.py` and replace `YOUR_GEMINI_API_KEY_HERE` with your actual API key
+3. **Set up Ollama (Local LLM)**
+   ```bash
+   # Install Ollama from https://ollama.ai
+   ollama pull qwen2.5-coder:3b
+   ollama serve
+   ```
 
 4. **Set up Google APIs**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
@@ -46,150 +78,164 @@ A modern dental appointment booking website powered by AI voice assistant techno
    - Create OAuth 2.0 credentials (Desktop app)
    - Download as `credentials.json` in the project root
 
+5. **Configure MongoDB (Optional)**
+   - The system uses MongoDB for user authentication
+   - Update connection string in `database_manager.py` if needed
+
 ### Running the Application
 
-1. **Start the Flask server**
+1. **Start Ollama server** (in a separate terminal)
+   ```bash
+   ollama serve
+   ```
+
+2. **Start the Flask server**
    ```bash
    python server.py
    ```
 
-2. **Open your browser**
+3. **Open your browser**
    - Navigate to `http://localhost:5000`
+   - Sign up for a new account or login
+   - Click "Launch Assistant" to start booking
 
-## 🎯 Usage Examples
+## 🎯 Usage Guide
 
-### Booking as a New Patient
+### Booking Workflow
 
-**Agent:** "Are you a new or old patient?"
-**You:** "New"
-**Agent:** "What's your name?"
-... (Agent asks for Name, Phone, Date, Time, Reason)
-**Agent:** "Confirmed! Your Customer ID is **CUST001**. Please save this!"
+**New Patient:**
+1. Agent asks: "Are you a new or old patient?" → Say "New"
+2. System collects: Name, Phone, Date, Time, Reason
+3. Generates Customer ID (e.g., CUST001)
+4. Logs to Customer_Master and Customers sheets
+5. Creates Google Calendar event
 
-### Booking as a Returning Patient
+**Returning Patient:**
+1. Agent asks: "Are you a new or old patient?" → Say "Old"
+2. Provide Customer ID
+3. System confirms identity and prefills name/phone
+4. Only asks for: Date, Time, Reason
+5. Logs appointment to Customers sheet
 
-**Agent:** "Are you a new or old patient?"
-**You:** "Old"
-**Agent:** "Please tell me your customer ID."
-**You:** "CUST001"
-**Agent:** "Welcome back, John! Is your phone still 555-1234? Say 'yes' to confirm."
-**You:** "Yes"
-**Agent:** "What date would you like to book for?" (Skips Name/Phone!)
+### Rescheduling Workflow
 
-### Viewing Your Appointments
+1. Agent asks for: Name, Phone, CURRENT date, CURRENT time
+2. Then asks for: NEW date, NEW time
+3. Updates **same row** in Google Sheets
+4. Deletes old calendar event and creates new one
 
-**You:** "Show me my appointments"
-**Agent:** "What is your customer ID?"
-**You:** "CUST001"
-**Agent:** "I found 2 appointments for you: Jan 10 at 10:00 AM and Jan 15 at 2:00 PM."
+### Cancellation Workflow
 
-### Canceling an Appointment
-
-**You:** "Cancel my appointment on Jan 10"
-**Agent:** (Confirmed) "I have cleared those details from your schedule."
-*Note: Cancellation clears the Date/Time fields in the log but keeps your customer record.*
+1. Agent asks for: Name, Customer ID, Date, Time
+2. Deletes **entire row** from Customers sheet
+3. Removes event from Google Calendar
 
 ## 🏗️ Project Structure
 
 ```
 Dental/
-├── app.py                  # Core agent logic & Gemini parsing
-├── google_sheets_manager.py # Google Sheets Appointment Log integration
-├── server.py              # Flask web server
-├── requirements.txt       # Python dependencies
-├── credentials.json       # Google API credentials
-├── token.pickle          # Auth token
+├── app.py                      # Core AI agent logic & LLM parsing
+├── google_sheets_manager.py    # Customer Master & Appointment log management
+├── database_manager.py         # MongoDB user authentication
+├── server.py                   # Flask web server with auth routes
+├── requirements.txt            # Python dependencies
+├── credentials.json            # Google API credentials
+├── token.pickle               # Google auth token
+├── sheets_config.json         # Spreadsheet configuration
 ├── templates/
-│   └── index.html        # Main UI
+│   ├── index.html             # Main app with glassmorphic UI
+│   ├── login.html             # Authentication page
+│   └── admin.html             # Admin dashboard
 └── static/
-    ├── css/style.css     # Premium Glassmorphism styling
-    └── js/app.js         # Frontend voice/UI logic
+    ├── css/style.css          # Premium design system
+    └── js/app.js              # Voice assistant frontend logic
 ```
 
-## 🔧 Technical Details
+## 🔧 Technical Stack
 
-### Backend (Python)
-
+### Backend
 - **Flask**: Web server framework
-- **DentalVoiceAgent**: Core AI agent with stateful conversation
-- **Google Sheets Manager**: Appointment logging and retrieval (Appointment Log model)
-- **Google Calendar API**: Real-time calendar synchronization
-- **Gemini AI**: Natural language understanding and intent parsing
-- **pyttsx3 / SpeechRecognition**: Local voice support (CLI/Debug mode)
+- **Ollama (qwen2.5-coder:3b)**: Local LLM for intent parsing
+- **Google Sheets API**: Data persistence
+- **Google Calendar API**: Appointment scheduling
+- **MongoDB**: User authentication database
+- **pyttsx3**: Text-to-speech
 
-### Frontend (JavaScript)
-
-- **Web Speech API**: Browser-based voice input/output
-- **Fetch API**: Communication with Flask backend
+### Frontend
 - **Vanilla JavaScript**: No framework dependencies
-- **Premium CSS**: Glassmorphism and responsive design
+- **Web Speech API**: Browser voice input/output
+- **Modern CSS**: Glassmorphism with HSL tokens
+- **'Outfit' Font**: Premium typography
 
-### AI Capabilities
+### AI Features
+- Intent recognition: book, reschedule, cancel
+- Context-aware field collection
+- Strict validation with no null values
+- Date/time normalization
+- Business hours enforcement
 
-- **Intent Recognition**: Book, Reschedule, Cancel, and **View Appointments**
-- **Smart Logic**: Automatic skipping of known patient fields (Name, Phone)
-- **Historical Logging**: Every appointment is tracked as a unique row in Google Sheets
-- **Strict Validation**: Business hours (9 AM - 5 PM) and date/time normalization
-- **Context Awareness**: Remembers patient type and identity throughout the session
+## 🔒 Security
 
-## 🎨 Design Features
+### API Key Management
+- Never commit `credentials.json` or `token.pickle`
+- `.gitignore` pre-configured for security
+- Use environment variables in production
 
-- **Color Palette**: Professional dental blues and cyans
-- **Glassmorphism**: Modern frosted glass effects
-- **Smooth Animations**: Floating cards, transitions
-- **Dark Mode Ready**: CSS variables for easy theming
-- **Accessibility**: Semantic HTML, ARIA labels
+### Authentication
+- Bcrypt password hashing
+- Session-based auth with Flask sessions
+- Role-based access control (User/Admin)
 
-## 🔒 Security Notes
-
-### Important: Protect Your API Keys!
-
-**Never commit sensitive files to Git:**
-- `credentials.json` - Your Google Calendar OAuth credentials
-- `token.pickle` - Your Google Calendar access token
-- API keys in `app.py`
-
-**Before pushing to GitHub:**
-1. ✅ The `.gitignore` file is already configured to exclude sensitive files
-2. ✅ Replace `YOUR_GEMINI_API_KEY_HERE` in `app.py` with your actual key locally
-3. ✅ Never commit your real API key to version control
-
-**For Production:**
-- Use environment variables for API keys:
-  ```python
-  import os
-  GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY_HERE')
-  ```
-- Implement user authentication
-- Add rate limiting to prevent API abuse
-- Use HTTPS in production environments
-- Store credentials in secure secret management systems
+### Data Protection
+- Customer IDs are **permanent and immutable**
+- MongoDB for secure user credential storage
+- Google OAuth for API access
 
 ## 🐛 Troubleshooting
 
-### Voice input not working
-- Ensure you're using Chrome, Edge, or Safari
-- Grant microphone permissions when prompted
+### Voice not working
+- Use Chrome, Edge, or Safari
+- Grant microphone permissions
 - Check browser console for errors
 
-### Calendar integration issues
-- Verify `credentials.json` is valid
-- Delete `token.pickle` and re-authenticate
-- Check Google Calendar API is enabled
+### Ollama connection failed
+- Ensure Ollama is running: `ollama serve`
+- Verify model is installed: `ollama list`
+- Check `http://localhost:11434` is accessible
 
-### Server won't start
-- Ensure all dependencies are installed
-- Check port 5000 is not in use
-- Verify Python version is 3.8+
+### Google API issues
+- Verify credentials.json is valid
+- Delete token.pickle and re-authenticate
+- Check API quotas in Google Console
 
-## 📝 License
+### Duplicate appointments
+- Fixed: System now logs only once after calendar creation
+- Check for multiple calls to `log_appointment` if issue persists
+
+### Agent loses context
+- Fixed: Improved fallback handling
+- System maintains booking intent throughout conversation
+
+## 📝 Recent Updates
+
+### Latest Improvements (January 2026)
+- ✅ Fixed duplicate appointment logging
+- ✅ Enhanced reschedule to delete old calendar events
+- ✅ Enforced strict field validation (no null values)
+- ✅ Context-aware prompts for reschedule/cancel
+- ✅ Immutable Customer ID protection
+- ✅ Fixed agent UI scrolling issues
+- ✅ Premium glassmorphic UI overhaul
+- ✅ Added authentication and admin dashboard
+
+## � License
 
 This project is for educational and demonstration purposes.
 
-## 🤝 Support
+## 🤝 Contributing
 
-For issues or questions, please check the troubleshooting section or review the code comments.
+For issues or improvements, please review the code and submit suggestions.
 
 ---
 
-**Built with ❤️ using AI-powered voice technology**
+**Built with ❤️ using AI-powered voice technology and modern web design**

@@ -13,6 +13,7 @@ SCOPES = [
 ]
 TIMEZONE = "Asia/Kolkata"
 SPREADSHEET_NAME = "Dental_Customer_Database"
+CUSTOMER_MASTER_SHEET = "Customer_Master"
 
 
 class GoogleSheetsManager:
@@ -45,8 +46,7 @@ class GoogleSheetsManager:
         return build("sheets", "v4", credentials=creds)
     
     def initialize_sheet(self):
-        """Create or find the customer database spreadsheet"""
-        # Try to load existing spreadsheet ID from config file
+        """Create or find the customer database spreadsheet and ensure required sheets exist"""
         config_file = "sheets_config.json"
         if os.path.exists(config_file):
             try:
@@ -55,27 +55,60 @@ class GoogleSheetsManager:
                     config = json.load(f)
                     self.spreadsheet_id = config.get('spreadsheet_id')
                     if self.spreadsheet_id:
-                        # Verify the spreadsheet still exists
                         try:
-                            self.service.spreadsheets().get(spreadsheetId=self.spreadsheet_id).execute()
-                            print(f"✅ Using existing customer database: {self.spreadsheet_id}")
-                            print(f"📊 View at: https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}")
+                            # Get spreadsheet metadata
+                            spreadsheet = self.service.spreadsheets().get(spreadsheetId=self.spreadsheet_id).execute()
+                            existing_sheets = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
+                            
+                            # Check and add Customer_Master if missing
+                            if CUSTOMER_MASTER_SHEET not in existing_sheets:
+                                body = {'requests': [{'addSheet': {'properties': {'title': CUSTOMER_MASTER_SHEET}}}]}
+                                self.service.spreadsheets().batchUpdate(spreadsheetId=self.spreadsheet_id, body=body).execute()
+                                # Add headers
+                                headers = [['Customer ID', 'Name', 'Phone Number', 'First Created Date and Time']]
+                                self.service.spreadsheets().values().update(
+                                    spreadsheetId=self.spreadsheet_id,
+                                    range=f'{CUSTOMER_MASTER_SHEET}!A1:D1',
+                                    valueInputOption='RAW',
+                                    body={'values': headers}
+                                ).execute()
+                                print(f"✅ Added missing sheet: {CUSTOMER_MASTER_SHEET}")
+
+                            # Check and add Customers if missing
+                            if self.sheet_name not in existing_sheets:
+                                body = {'requests': [{'addSheet': {'properties': {'title': self.sheet_name}}}]}
+                                self.service.spreadsheets().batchUpdate(spreadsheetId=self.spreadsheet_id, body=body).execute()
+                                # Add headers (No timestamp for Customers)
+                                headers = [['Customer ID', 'Name', 'Phone Number', 'Appointment Date', 'Appointment Time', 'Appointment Reason']]
+                                self.service.spreadsheets().values().update(
+                                    spreadsheetId=self.spreadsheet_id,
+                                    range=f'{self.sheet_name}!A1:F1',
+                                    valueInputOption='RAW',
+                                    body={'values': headers}
+                                ).execute()
+                                print(f"✅ Added missing sheet: {self.sheet_name}")
+
+                            print(f"✅ Using customer database: {self.spreadsheet_id}")
                             return
-                        except:
-                            print("⚠️  Saved spreadsheet not found, creating new one...")
+                        except Exception as e:
+                            print(f"⚠️ Error accessing existing spreadsheet: {e}. Creating new one...")
             except:
                 pass
         
-        # Create new spreadsheet if not found
         self.create_customer_sheet()
     
     def create_customer_sheet(self):
-        """Create a new customer database spreadsheet"""
+        """Create a new customer database spreadsheet with two sheets"""
         spreadsheet = {
             'properties': {'title': SPREADSHEET_NAME},
-            'sheets': [{
-                'properties': {'title': self.sheet_name}
-            }]
+            'sheets': [
+                {
+                    'properties': {'title': CUSTOMER_MASTER_SHEET}
+                },
+                {
+                    'properties': {'title': self.sheet_name}
+                }
+            ]
         }
         
         result = self.service.spreadsheets().create(body=spreadsheet).execute()
@@ -87,13 +120,22 @@ class GoogleSheetsManager:
         with open(config_file, 'w') as f:
             json.dump({'spreadsheet_id': self.spreadsheet_id}, f)
         
-        # Add headers
-        headers = [['Customer ID', 'Name', 'Phone Number', 'First Created Date and Time', 'Appointment Date', 'Appointment Time', 'Appointment Reason']]
+        # Add headers to Customer_Master sheet
+        master_headers = [['Customer ID', 'Name', 'Phone Number', 'First Created Date and Time']]
         self.service.spreadsheets().values().update(
             spreadsheetId=self.spreadsheet_id,
-            range=f'{self.sheet_name}!A1:G1',
+            range=f'{CUSTOMER_MASTER_SHEET}!A1:D1',
             valueInputOption='RAW',
-            body={'values': headers}
+            body={'values': master_headers}
+        ).execute()
+        
+        # Add headers to Customers (appointment log) sheet - No timestamp
+        appointment_headers = [['Customer ID', 'Name', 'Phone Number', 'Appointment Date', 'Appointment Time', 'Appointment Reason']]
+        self.service.spreadsheets().values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range=f'{self.sheet_name}!A1:F1',
+            valueInputOption='RAW',
+            body={'values': appointment_headers}
         ).execute()
         
         print(f"✅ Created new customer database: {self.spreadsheet_id}")
@@ -117,12 +159,12 @@ class GoogleSheetsManager:
             return 0
     
     def generate_customer_id(self):
-        """Generate next customer ID (CUST001, CUST002, etc.)"""
+        """Generate next customer ID (CUST001, CUST002, etc.) from Customer_Master sheet"""
         try:
-            # Get all customer IDs
+            # Get all customer IDs from Customer_Master sheet
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!A:A'
+                range=f'{CUSTOMER_MASTER_SHEET}!A:A'
             ).execute()
             
             values = result.get('values', [])
@@ -149,28 +191,24 @@ class GoogleSheetsManager:
             return "CUST001"
     
     def get_customer_by_id(self, customer_id):
-        """Retrieve latest customer details by customer ID from the log"""
+        """Retrieve customer details by customer ID from the Master sheet"""
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!A:G'
+                range=f'{CUSTOMER_MASTER_SHEET}!A:D'
             ).execute()
             
             values = result.get('values', [])
             
-            # Search backwards to get the LATEST info for this ID
-            for i in range(len(values) - 1, 0, -1):
-                row = values[i]
+            # Simple search in Master
+            for i, row in enumerate(values[1:], start=2):
                 if row and len(row) > 0 and row[0].upper() == customer_id.upper():
                     return {
                         'customer_id': row[0],
                         'name': row[1] if len(row) > 1 else '',
                         'phone': row[2] if len(row) > 2 else '',
                         'created_date': row[3] if len(row) > 3 else '',
-                        'appointment_date': row[4] if len(row) > 4 else '',
-                        'appointment_time': row[5] if len(row) > 5 else '',
-                        'appointment_reason': row[6] if len(row) > 6 else '',
-                        'row_number': i + 1
+                        'row_number': i
                     }
             
             return None
@@ -180,11 +218,11 @@ class GoogleSheetsManager:
             return None
     
     def get_customer_by_name(self, name):
-        """Search for customer by name (case-insensitive)"""
+        """Search for customer by name in the Master sheet"""
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!A:G'
+                range=f'{CUSTOMER_MASTER_SHEET}!A:D'
             ).execute()
             
             values = result.get('values', [])
@@ -197,9 +235,6 @@ class GoogleSheetsManager:
                         'name': row[1],
                         'phone': row[2] if len(row) > 2 else '',
                         'created_date': row[3] if len(row) > 3 else '',
-                        'appointment_date': row[4] if len(row) > 4 else '',
-                        'appointment_time': row[5] if len(row) > 5 else '',
-                        'appointment_reason': row[6] if len(row) > 6 else '',
                         'row_number': i
                     }
             
@@ -209,15 +244,59 @@ class GoogleSheetsManager:
             print(f"Error getting customer by name: {e}")
             return None
     
-    def log_appointment(self, customer_id, name, phone, appointment_date, appointment_time, reason):
-        """Log a NEW appointment row for any customer"""
+    
+    def customer_exists_in_master(self, customer_id):
+        """Check if customer ID exists in Customer_Master sheet"""
+        try:
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f'{CUSTOMER_MASTER_SHEET}!A:A'
+            ).execute()
+            
+            values = result.get('values', [])
+            customer_id_upper = customer_id.upper()
+            
+            for row in values[1:]:  # Skip header
+                if row and row[0].upper() == customer_id_upper:
+                    return True
+            
+            return False
+        except Exception as e:
+            print(f"Error checking customer in master: {e}")
+            return False
+    
+    def log_new_customer(self, customer_id, name, phone):
+        """Log a new customer to Customer_Master sheet"""
         try:
             now = datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
-            values = [[customer_id, name, phone, now, appointment_date, appointment_time, reason]]
+            values = [[customer_id, name, phone, now]]
             
             self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!A:G',
+                range=f'{CUSTOMER_MASTER_SHEET}!A:D',
+                valueInputOption='RAW',
+                insertDataOption='INSERT_ROWS',
+                body={'values': values}
+            ).execute()
+            
+            print(f"✅ Logged new customer to Master: {customer_id} - {name}")
+            return True
+        except Exception as e:
+            print(f"Error logging new customer to master: {e}")
+            return False
+    
+    def log_appointment(self, customer_id, name, phone, appointment_date, appointment_time, reason):
+        """Log a NEW appointment row for any customer. If customer is new, also add to Customer_Master."""
+        try:
+            # Check if customer exists in Customer_Master, if not add them
+            if not self.customer_exists_in_master(customer_id):
+                self.log_new_customer(customer_id, name, phone)
+            
+            values = [[customer_id, name, phone, appointment_date, appointment_time, reason]]
+            
+            self.service.spreadsheets().values().append(
+                spreadsheetId=self.spreadsheet_id,
+                range=f'{self.sheet_name}!A:F',
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body={'values': values}
@@ -239,10 +318,10 @@ class GoogleSheetsManager:
             values = result.get('values', [])
             
             for i, row in enumerate(values[1:], start=2):
-                if (len(row) >= 6 and 
+                if (len(row) >= 5 and 
                     row[0].upper() == customer_id.upper() and 
-                    row[4] == date and 
-                    row[5] == time):
+                    row[3] == date and 
+                    row[4] == time):
                     return i
             return None
         except Exception as e:
@@ -256,11 +335,11 @@ class GoogleSheetsManager:
             if not row_num:
                 return False
             
-            # Update Date and Time columns (E and F)
+            # Update Date and Time columns (D and E)
             values = [[new_date, new_time]]
             self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!E{row_num}:F{row_num}',
+                range=f'{self.sheet_name}!D{row_num}:E{row_num}',
                 valueInputOption='RAW',
                 body={'values': values}
             ).execute()
@@ -272,27 +351,38 @@ class GoogleSheetsManager:
             return False
 
     def delete_appointment(self, customer_id, date, time):
-        """Clear specific appointment fields (for cancellation) instead of deleting row"""
+        """Delete entire appointment row (for cancellation)"""
         try:
             row_num = self.find_appointment_row(customer_id, date, time)
             if not row_num:
                 return False
             
-            # Clear columns E, F, and G (Date, Time, Reason)
-            # We use an empty list of lists with empty strings
-            values = [["", "", ""]]
+            # Get the sheet ID for the Customers sheet
+            sheet_id = self.get_sheet_id()
             
-            self.service.spreadsheets().values().update(
+            # Delete the entire row using batchUpdate
+            # Row index is 0-based, so subtract 1 from row_num
+            requests = [{
+                'deleteDimension': {
+                    'range': {
+                        'sheetId': sheet_id,
+                        'dimension': 'ROWS',
+                        'startIndex': row_num - 1,
+                        'endIndex': row_num
+                    }
+                }
+            }]
+            
+            body = {'requests': requests}
+            self.service.spreadsheets().batchUpdate(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!E{row_num}:G{row_num}',
-                valueInputOption='RAW',
-                body={'values': values}
+                body=body
             ).execute()
             
-            print(f"✅ Cleared appointment details in row {row_num} for {customer_id}")
+            print(f"✅ Deleted appointment row {row_num} for {customer_id}")
             return True
         except Exception as e:
-            print(f"Error clearing appointment log: {e}")
+            print(f"Error deleting appointment row: {e}")
             return False
 
     def create_customer(self, name, phone, appointment_date='', appointment_time='', reason=''):
@@ -306,7 +396,8 @@ class GoogleSheetsManager:
             return None
     
     def update_customer(self, customer_id, name=None, phone=None):
-        """Update existing customer information"""
+        """Update existing customer information in Customer_Master sheet.
+        NOTE: Customer ID is PERMANENT and CANNOT be changed."""
         try:
             customer = self.get_customer_by_id(customer_id)
             if not customer:
@@ -314,25 +405,25 @@ class GoogleSheetsManager:
             
             row_num = customer['row_number']
             
-            # Update name if provided
+            # Update name if provided (Column B in Customer_Master)
             if name:
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.sheet_name}!B{row_num}',
+                    range=f'{CUSTOMER_MASTER_SHEET}!B{row_num}',
                     valueInputOption='RAW',
                     body={'values': [[name]]}
                 ).execute()
             
-            # Update phone if provided
+            # Update phone if provided (Column C in Customer_Master)
             if phone:
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.sheet_name}!C{row_num}',
+                    range=f'{CUSTOMER_MASTER_SHEET}!C{row_num}',
                     valueInputOption='RAW',
                     body={'values': [[phone]]}
                 ).execute()
             
-            print(f"✅ Updated customer: {customer_id}")
+            print(f"✅ Updated customer in Master: {customer_id}")
             return True
         
         except Exception as e:
@@ -352,7 +443,7 @@ class GoogleSheetsManager:
             if appointment_date:
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.sheet_name}!E{row_num}',
+                    range=f'{self.sheet_name}!D{row_num}',
                     valueInputOption='RAW',
                     body={'values': [[appointment_date]]}
                 ).execute()
@@ -361,7 +452,7 @@ class GoogleSheetsManager:
             if appointment_time:
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.sheet_name}!F{row_num}',
+                    range=f'{self.sheet_name}!E{row_num}',
                     valueInputOption='RAW',
                     body={'values': [[appointment_time]]}
                 ).execute()
@@ -370,7 +461,7 @@ class GoogleSheetsManager:
             if reason:
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f'{self.sheet_name}!G{row_num}',
+                    range=f'{self.sheet_name}!F{row_num}',
                     valueInputOption='RAW',
                     body={'values': [[reason]]}
                 ).execute()
@@ -386,7 +477,7 @@ class GoogleSheetsManager:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!A:G'
+                range=f'{self.sheet_name}!A:F'
             ).execute()
             
             values = result.get('values', [])
@@ -401,10 +492,9 @@ class GoogleSheetsManager:
                         'customer_id': row[0],
                         'name': row[1] if len(row) > 1 else '',
                         'phone': row[2] if len(row) > 2 else '',
-                        'created_date': row[3] if len(row) > 3 else '',
-                        'appointment_date': row[4] if len(row) > 4 else '',
-                        'appointment_time': row[5] if len(row) > 5 else '',
-                        'appointment_reason': row[6] if len(row) > 6 else ''
+                        'appointment_date': row[3] if len(row) > 3 else '',
+                        'appointment_time': row[4] if len(row) > 4 else '',
+                        'appointment_reason': row[5] if len(row) > 5 else ''
                     })
             
             return customers
@@ -417,7 +507,7 @@ class GoogleSheetsManager:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'{self.sheet_name}!A:G'
+                range=f'{self.sheet_name}!A:F'
             ).execute()
             
             values = result.get('values', [])
@@ -433,13 +523,44 @@ class GoogleSheetsManager:
                         'customer_id': row[0],
                         'name': row[1] if len(row) > 1 else '',
                         'phone': row[2] if len(row) > 2 else '',
-                        'created_date': row[3] if len(row) > 3 else '',
-                        'appointment_date': row[4] if len(row) > 4 else '',
-                        'appointment_time': row[5] if len(row) > 5 else '',
-                        'appointment_reason': row[6] if len(row) > 6 else ''
+                        'appointment_date': row[3] if len(row) > 3 else '',
+                        'appointment_time': row[4] if len(row) > 4 else '',
+                        'appointment_reason': row[5] if len(row) > 5 else ''
                     })
             
             return appointments
         except Exception as e:
             print(f"Error getting appointments by ID: {e}")
             return []
+
+    def seed_requested_data(self):
+        """Seed the specific data requested by the user into Customer_Master"""
+        try:
+            # Data: CUST001, Dhivakar G, 8610080257, 2026-01-22 22:08:36
+            customer_id = "CUST001"
+            name = "Dhivakar G"
+            phone = "8610080257"
+            timestamp = "2026-01-22 22:08:36"
+            
+            if not self.customer_exists_in_master(customer_id):
+                values = [[customer_id, name, phone, timestamp]]
+                self.service.spreadsheets().values().append(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f'{CUSTOMER_MASTER_SHEET}!A:D',
+                    valueInputOption='RAW',
+                    insertDataOption='INSERT_ROWS',
+                    body={'values': values}
+                ).execute()
+                print(f"✅ Seeded {customer_id} data into Customer_Master")
+            else:
+                print(f"ℹ️  {customer_id} already exists in Master, skipping seed.")
+            return True
+        except Exception as e:
+            print(f"Error seeding data: {e}")
+            return False
+
+if __name__ == "__main__":
+    # Maintenance / Seeding entry point
+    gsm = GoogleSheetsManager()
+    gsm.seed_requested_data()
+
