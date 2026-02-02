@@ -126,6 +126,8 @@ body {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    gap: 40px;
+    /* Ensure minimum space between logo and links */
 }
 
 .logo {
@@ -147,7 +149,8 @@ body {
 
 .nav-links {
     display: flex;
-    gap: 32px;
+    gap: 48px;
+    /* Increased from 32px for better spacing */
     align-items: center;
 }
 
@@ -683,6 +686,78 @@ body {
 }
 
 /* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+    background: var(--n-900);
+    border-top: 1px solid var(--glass-border);
+    padding: 6rem 0 2rem;
+    position: relative;
+    z-index: 10;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 4rem;
+    margin-bottom: 4rem;
+    flex-wrap: wrap;
+}
+
+.footer-brand {
+    max-width: 320px;
+}
+
+.footer-brand .logo {
+    margin-bottom: 1.5rem;
+}
+
+.footer-brand p {
+    color: var(--n-400);
+    line-height: 1.8;
+    font-size: 0.95rem;
+}
+
+.footer-links {
+    display: flex;
+    gap: 5rem;
+}
+
+.footer-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.footer-column h4 {
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.footer-column a {
+    color: var(--n-400);
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: all 0.3s var(--transition);
+}
+
+.footer-column a:hover {
+    color: var(--p-400);
+    transform: translateX(4px);
+}
+
+.footer-bottom {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 2rem;
+    text-align: center;
+    color: var(--n-500);
+    font-size: 0.9rem;
+}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 1024px) {
@@ -715,6 +790,18 @@ body {
 
     .hero-buttons {
         justify-content: center;
+    }
+
+    /* Footer Mobile */
+    .footer-content {
+        flex-direction: column;
+        gap: 3rem;
+    }
+
+    .footer-links {
+        width: 100%;
+        justify-content: space-between;
+        gap: 2rem;
     }
 
     .modal-content {

@@ -8,6 +8,7 @@ from datetime import datetime
 from app import DentalVoiceAgent, VoiceInterface
 from database_manager import DatabaseManager
 import threading
+from twilio.twiml.voice_response import VoiceResponse
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)
@@ -256,6 +257,66 @@ def get_history():
         "history": agent.conversation_history,
         "state": agent.agent.state
     })
+
+# TWILIO VOICE ROUTE
+@app.route('/twilio/voice', methods=['POST'])
+@app.route('/api/twilio/voice', methods=['POST'])
+def twilio_voice():
+    """Handle incoming Twilio voice calls"""
+    # Get Twilio request data
+    call_sid = request.values.get('CallSid', None)
+    speech_result = request.values.get('SpeechResult', None)
+    
+    resp = VoiceResponse()
+    
+    try:
+        if not call_sid:
+            resp.say("System error. No call ID found.")
+            return str(resp)
+            
+        # reuse or create session based on CallSid
+        if call_sid not in sessions:
+            print(f"📞 New Call: {call_sid}")
+            sessions[call_sid] = WebVoiceAgent(call_sid)
+            # Initial greeting for new call
+            greeting = "Hello! Welcome to Smile Dental. How can I help you today?"
+            
+            # Use Gather to capture speech
+            gather = resp.gather(input='speech', action='/twilio/voice', speechTimeout='auto')
+            gather.say(greeting)
+            
+            # If no input, redirect back to this route to loop or just end
+            resp.redirect('/twilio/voice')
+            return str(resp)
+
+        # Continue conversation
+        if speech_result:
+            print(f"🗣️ User ({call_sid}): {speech_result}")
+            agent = sessions[call_sid]
+            result = agent.process_message(speech_result)
+            response_text = result['response']
+            print(f"🤖 Agent: {response_text}")
+            
+            # Respond and listen again
+            gather = resp.gather(input='speech', action='/twilio/voice', speechTimeout='auto')
+            gather.say(response_text)
+            resp.redirect('/twilio/voice')
+        else:
+            # If we got here via redirect without speech (timeout/silence)
+            # We can prompt again or just wait
+            gather = resp.gather(input='speech', action='/twilio/voice', speechTimeout='auto')
+            gather.say("I am listening.")
+            resp.redirect('/twilio/voice')
+            
+        return str(resp)
+    except Exception as e:
+        print(f"❌ Twilio Error: {e}")
+        import traceback
+        with open("error_log.txt", "w") as f:
+            f.write(f"Error: {e}\n")
+            traceback.print_exc(file=f)
+        resp.say("I'm sorry, an error occurred in the system.")
+        return str(resp)
 
 if __name__ == '__main__':
     print("=" * 60)

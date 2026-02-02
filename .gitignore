@@ -47,3 +47,9 @@ sheets_config.json
 # Never commit files with real API keys
 config.py
 secrets.py
+
+# Logs and Temp
+error_log.txt
+*.log
+test_twilio_call.py
+t.py
