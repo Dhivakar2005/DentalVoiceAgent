@@ -24,11 +24,15 @@ The core of Smile Dental is an intelligent conversational agent capable of under
 
 ## 🖼️ Gallery
 
-| AI Assistant Modal | Customer Database |
-|--------------------|-------------------|
-| ![AI Modal](assets/ai_assistant_modal.png) | ![Master](assets/customer_master.png) |
+| AI Assistant Modal | Admin Dashboard |
+|--------------------|-----------------|
+| ![AI Modal](assets/ai_assistant_modal.png) | ![Admin](assets/admin_dashboard.png) |
 
-## � Quick Start Guide
+| Customer Database | Appointment Log |
+|-------------------|-----------------|
+| ![Master](assets/customer_master.png) | ![Log](assets/appointment_log.png) |
+
+##⚡ Quick Start Guide
 
 Follow these steps to set up the project from scratch.
 
@@ -117,6 +121,3 @@ Dental/
 -   **Role-Based Access**: Separate portals for Patients and Admins.
 -   **Data Privacy**: Customer IDs are permanent and unique.
 -   **Secure Auth**: Bcrypt encryption for user credentials.
-
----
-**Built with ❤️ using AI-powered voice technology and modern web design.**
