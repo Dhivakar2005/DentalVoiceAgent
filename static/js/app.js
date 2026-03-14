@@ -1,395 +1,606 @@
-// ===========================
-// VOICE ASSISTANT APPLICATION
-// ===========================
+// ============================================================
+//  SMILE DENTAL — app.js
+//  All voice assistant logic + full motion graphics merged
+// ============================================================
 
-class VoiceAssistant {
-    constructor(suffix = '') {
-        this.sessionId = null;
-        this.isActive = false;
-        this.isListening = false;
-        this.recognition = null;
-        this.suffix = suffix; // '' for main page, 'Modal' for modal
+// ── CUSTOM CURSOR ────────────────────────────────────────────
+class CustomCursor {
+  constructor() {
+    this.cursor      = document.getElementById('cursor');
+    this.trail       = document.getElementById('cursorTrail');
+    this.smileEl     = document.getElementById('smileBlast');
+    this.mouseX      = -100;
+    this.mouseY      = -100;
+    this.trailX      = -100;
+    this.trailY      = -100;
+    this.smilePool   = ['😁','😄','🦷','✨','💚','🌟','😎','🎉','💎','🔥'];
 
-        // DOM Elements - append suffix to IDs for modal support
-        this.startBtn = document.getElementById('startBtn' + suffix);
-        this.messageInput = document.getElementById('messageInput' + suffix);
-        this.voiceBtn = document.getElementById('voiceBtn' + suffix);
-        this.sendBtn = document.getElementById('sendBtn' + suffix);
-        this.conversationContainer = document.getElementById('conversationContainer' + suffix);
-        this.statusText = document.getElementById('statusText' + suffix);
-        this.statusDot = suffix === 'Modal'
-            ? document.getElementById('statusDot' + suffix)
-            : document.querySelector('.status-dot');
+    if (!this.cursor) return;
+    this._trackMouse();
+    this._animTrail();
+    this._hoverEffects();
+    this._clickBlast();
+  }
 
-        this.initializeEventListeners();
-        this.initializeSpeechRecognition();
-    }
-
-    initializeEventListeners() {
-        if (this.startBtn) this.startBtn.addEventListener('click', () => this.startSession());
-        this.sendBtn.addEventListener('click', () => this.sendMessage());
-        this.voiceBtn.addEventListener('click', () => this.toggleVoiceInput());
-
-        // Enter key to send message
-        this.messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
-    }
-
-    initializeSpeechRecognition() {
-        // Check if browser supports Web Speech API
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            this.recognition = new SpeechRecognition();
-            this.recognition.continuous = false;
-            this.recognition.interimResults = false;
-            this.recognition.lang = 'en-US';
-
-            this.recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                this.messageInput.value = transcript;
-                this.sendMessage();
-            };
-
-            this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                this.updateStatus('Error with voice input. Please try again.', 'error');
-                this.stopListening();
-            };
-
-            this.recognition.onend = () => {
-                this.stopListening();
-            };
-        } else {
-            console.warn('Speech recognition not supported in this browser');
-            this.voiceBtn.style.display = 'none';
-        }
-    }
-
-    async startSession() {
-        try {
-            this.updateStatus('Starting session...', 'loading');
-
-            const response = await fetch('/api/start-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                this.sessionId = data.session_id;
-                this.isActive = true;
-
-                if (this.startBtn) this.startBtn.style.display = 'none';
-                this.messageInput.disabled = false;
-                this.voiceBtn.disabled = false;
-                this.sendBtn.disabled = false;
-
-                // Clear welcome message and add agent greeting
-                this.conversationContainer.innerHTML = '';
-                this.addMessage('agent', data.message);
-
-                this.updateStatus('Ready - Type or speak your message', 'active');
-                this.messageInput.focus();
-            } else {
-                this.updateStatus('Failed to start session', 'error');
-            }
-        } catch (error) {
-            console.error('Error starting session:', error);
-            this.updateStatus('Connection error. Please try again.', 'error');
-        }
-    }
-
-    async sendMessage() {
-        const message = this.messageInput.value.trim();
-
-        if (!message || !this.isActive) return;
-
-        // Add user message to UI
-        this.addMessage('user', message);
-        this.messageInput.value = '';
-
-        // Update status
-        this.updateStatus('Processing...', 'loading');
-
-        try {
-            const response = await fetch('/api/send-message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    session_id: this.sessionId,
-                    message: message
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                // Add agent response to UI
-                this.addMessage('agent', data.response);
-                this.updateStatus('Ready - Type or speak your message', 'active');
-
-                // Speak the response if supported
-                this.speakText(data.response);
-            } else {
-                this.addMessage('agent', data.response || 'Sorry, something went wrong.');
-                this.updateStatus('Error occurred', 'error');
-            }
-        } catch (error) {
-            console.error('Error sending message:', error);
-            this.addMessage('agent', 'Connection error. Please try again.');
-            this.updateStatus('Connection error', 'error');
-        }
-    }
-
-    async resetSession() {
-        if (!this.sessionId) return;
-
-        try {
-            await fetch('/api/reset-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    session_id: this.sessionId
-                })
-            });
-
-            // Clear conversation
-            this.conversationContainer.innerHTML = '';
-            this.addMessage('agent', 'Session reset. How can I help you?');
-            this.updateStatus('Ready - Type or speak your message', 'active');
-            this.messageInput.value = '';
-        } catch (error) {
-            console.error('Error resetting session:', error);
-        }
-    }
-
-    async endSession() {
-        if (!this.sessionId) return;
-
-        try {
-            await fetch('/api/end-session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    session_id: this.sessionId
-                })
-            });
-        } catch (error) {
-            console.error('Error ending session:', error);
-        }
-
-        // Reset UI
-        this.sessionId = null;
-        this.isActive = false;
-        this.startBtn.style.display = 'block';
-        this.resetBtn.style.display = 'none';
-        this.endBtn.style.display = 'none';
-        this.messageInput.disabled = true;
-        this.voiceBtn.disabled = true;
-        this.sendBtn.disabled = true;
-        this.messageInput.value = '';
-
-        // Show welcome message
-        this.conversationContainer.innerHTML = `
-            <div class="welcome-message">
-                <div class="assistant-avatar">🤖</div>
-                <div class="message-bubble agent-message">
-                    <p>Hi! I'm your dental assistant. I can help you:</p>
-                    <ul>
-                        <li>📅 Book a new appointment</li>
-                        <li>♻️ Reschedule existing appointments</li>
-                        <li>❌ Cancel appointments</li>
-                    </ul>
-                    <p>Click "Start" below to begin!</p>
-                </div>
-            </div>
-        `;
-
-        this.updateStatus('Ready to help', 'inactive');
-    }
-
-    toggleVoiceInput() {
-        if (!this.recognition) {
-            alert('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');
-            return;
-        }
-
-        if (this.isListening) {
-            this.recognition.stop();
-        } else {
-            this.startListening();
-        }
-    }
-
-    startListening() {
-        this.isListening = true;
-        this.voiceBtn.classList.add('listening');
-        this.updateStatus('Listening... Speak now', 'listening');
-        this.recognition.start();
-    }
-
-    stopListening() {
-        this.isListening = false;
-        this.voiceBtn.classList.remove('listening');
-        if (this.isActive) {
-            this.updateStatus('Ready - Type or speak your message', 'active');
-        }
-    }
-
-    addMessage(role, text) {
-        const messageGroup = document.createElement('div');
-        messageGroup.className = `message-group ${role}`;
-
-        const avatar = document.createElement('div');
-        avatar.className = role === 'agent' ? 'assistant-avatar' : 'user-avatar';
-        avatar.textContent = role === 'agent' ? '✨' : '👤';
-
-        const bubble = document.createElement('div');
-        bubble.className = `message-bubble ${role}-message`;
-
-        // Handle text formatting
-        const lines = text.split('\n').filter(l => l.trim());
-        lines.forEach(line => {
-            const p = document.createElement('p');
-            // Basic strong/bold support for matching backend descriptions
-            p.innerHTML = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            bubble.appendChild(p);
-        });
-
-        messageGroup.appendChild(avatar);
-        messageGroup.appendChild(bubble);
-
-        this.conversationContainer.appendChild(messageGroup);
-
-        // Immersive scrolling
-        this.conversationContainer.scrollTo({
-            top: this.conversationContainer.scrollHeight,
-            behavior: 'smooth'
-        });
-    }
-
-    updateStatus(text, state) {
-        if (!this.statusText) return;
-        this.statusText.textContent = text;
-
-        // Update status dot with new premium animations
-        this.statusDot.className = 'status-dot';
-        if (state === 'active') this.statusDot.classList.add('active');
-        if (state === 'listening' || state === 'loading') this.statusDot.classList.add('listening');
-    }
-
-    speakText(text) {
-        // Use Web Speech API for text-to-speech
-        if ('speechSynthesis' in window) {
-            // Cancel any ongoing speech
-            window.speechSynthesis.cancel();
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            utterance.volume = 0.9;
-
-            // Try to use a female voice if available
-            const voices = window.speechSynthesis.getVoices();
-            const femaleVoice = voices.find(voice =>
-                voice.name.includes('Female') ||
-                voice.name.includes('Samantha') ||
-                voice.name.includes('Victoria')
-            );
-
-            if (femaleVoice) {
-                utterance.voice = femaleVoice;
-            }
-
-            window.speechSynthesis.speak(utterance);
-        }
-    }
-}
-
-// ===========================
-// SMOOTH SCROLLING
-// ===========================
-
-function scrollToBooking() {
-    document.getElementById('booking').scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
+  _trackMouse() {
+    document.addEventListener('mousemove', e => {
+      this.mouseX = e.clientX;
+      this.mouseY = e.clientY;
+      this.cursor.style.left = e.clientX + 'px';
+      this.cursor.style.top  = e.clientY + 'px';
     });
-}
+  }
 
-function scrollToServices() {
-    document.getElementById('services').scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
+  _animTrail() {
+    const tick = () => {
+      this.trailX += (this.mouseX - this.trailX) * 0.12;
+      this.trailY += (this.mouseY - this.trailY) * 0.12;
+      if (this.trail) {
+        this.trail.style.left = this.trailX + 'px';
+        this.trail.style.top  = this.trailY + 'px';
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  _hoverEffects() {
+    const targets = document.querySelectorAll('a, button, .service-card, .team-card, .process-step, .ai-fab, .btn, .nav-links li');
+    targets.forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        this.cursor.style.width    = '28px';
+        this.cursor.style.height   = '28px';
+        this.cursor.style.background = 'var(--accent-glow)';
+        if (this.trail) this.trail.style.borderColor = 'var(--accent)';
+      });
+      el.addEventListener('mouseleave', () => {
+        this.cursor.style.width    = '12px';
+        this.cursor.style.height   = '12px';
+        this.cursor.style.background = 'var(--white)';
+        if (this.trail) this.trail.style.borderColor = 'rgba(255,255,255,0.2)';
+      });
     });
+
+    document.addEventListener('mousedown', () => {
+      this.cursor.style.transform = 'translate(-50%,-50%) scale(0.7)';
+    });
+    document.addEventListener('mouseup', () => {
+      this.cursor.style.transform = 'translate(-50%,-50%) scale(1)';
+    });
+  }
+
+  _clickBlast() {
+    document.addEventListener('click', e => {
+      // Skip blasting inside modal input area
+      if (e.target.closest('.chat-input-area') || e.target.closest('#messageInputModal')) return;
+      this.blast(e.clientX, e.clientY);
+    });
+  }
+
+  blast(x, y) {
+    if (!this.smileEl) return;
+    const emoji = this.smilePool[Math.floor(Math.random() * this.smilePool.length)];
+    this.smileEl.textContent = emoji;
+    this.smileEl.style.left = x + 'px';
+    this.smileEl.style.top  = y + 'px';
+    this.smileEl.style.fontSize = (1.4 + Math.random() * 0.8) + 'rem';
+    this.smileEl.classList.remove('blast');
+    void this.smileEl.offsetWidth; // force reflow
+    this.smileEl.classList.add('blast');
+
+    // Extra mini-bursts
+    for (let i = 0; i < 6; i++) {
+      const mini = document.createElement('div');
+      mini.className   = 'smile-blast';
+      mini.textContent = this.smilePool[Math.floor(Math.random() * this.smilePool.length)];
+      const ox = x + (Math.random() - 0.5) * 100;
+      const oy = y + (Math.random() - 0.5) * 100;
+      mini.style.cssText = `
+        position:fixed;pointer-events:none;z-index:99996;
+        font-size:${0.7 + Math.random() * 0.9}rem;
+        left:${ox}px;top:${oy}px;
+        transform:translate(-50%,-50%) scale(0);
+        animation:blastAnim ${0.45 + Math.random() * 0.4}s cubic-bezier(.22,.61,.36,1) forwards;
+        animation-delay:${Math.random() * 0.12}s;
+      `;
+      document.body.appendChild(mini);
+      setTimeout(() => mini.remove(), 900);
+    }
+  }
 }
 
-// ===========================
-// MODAL FUNCTIONS
-// ===========================
+// Make blast accessible globally (for onclick on cards)
+window.smileBlastAt = function (e) {
+  const x = e.clientX || window._cursorX || 0;
+  const y = e.clientY || window._cursorY || 0;
+  if (window._cursor) window._cursor.blast(x, y);
+};
 
+// ── PARTICLE CANVAS ──────────────────────────────────────────
+class ParticleField {
+  constructor() {
+    this.canvas = document.getElementById('particleCanvas');
+    if (!this.canvas) return;
+    this.ctx   = this.canvas.getContext('2d');
+    this.parts = [];
+    this._resize();
+    window.addEventListener('resize', () => this._resize());
+    for (let i = 0; i < 90; i++) this.parts.push(new Particle(this.W, this.H));
+    this._loop();
+  }
+
+  _resize() {
+    this.W = this.canvas.width  = window.innerWidth;
+    this.H = this.canvas.height = window.innerHeight;
+  }
+
+  _loop() {
+    this.ctx.clearRect(0, 0, this.W, this.H);
+    this.parts.forEach(p => { p.update(this.W, this.H); p.draw(this.ctx); });
+    requestAnimationFrame(() => this._loop());
+  }
+}
+
+class Particle {
+  constructor(W, H) { this.W = W; this.H = H; this._reset(); this.y = Math.random() * H; }
+  _reset() {
+    this.x    = Math.random() * this.W;
+    this.y    = this.H + 10;
+    this.r    = 0.5 + Math.random() * 1.5;
+    this.vx   = (Math.random() - 0.5) * 0.35;
+    this.vy   = -(0.25 + Math.random() * 0.45);
+    this.a    = 0.08 + Math.random() * 0.35;
+    this.life = 0;
+    this.max  = 180 + Math.random() * 280;
+  }
+  update(W, H) {
+    this.x += this.vx; this.y += this.vy; this.life++;
+    if (this.life > this.max || this.y < -8) { this.W = W; this.H = H; this._reset(); }
+  }
+  draw(ctx) {
+    const ratio = this.life / this.max;
+    ctx.save();
+    ctx.globalAlpha = this.a * (1 - ratio);
+    ctx.fillStyle   = '#00ff87';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ── SCROLL REVEAL ────────────────────────────────────────────
+function initScrollReveal() {
+  const els = document.querySelectorAll('.reveal-up, .reveal-right, .fade-up');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  els.forEach(el => obs.observe(el));
+}
+
+// ── PARALLAX ─────────────────────────────────────────────────
+function initParallax() {
+  // Mouse parallax for glow orbs
+  document.addEventListener('mousemove', e => {
+    const mx = (e.clientX - window.innerWidth  / 2) * 0.012;
+    const my = (e.clientY - window.innerHeight / 2) * 0.012;
+    const g1 = document.querySelector('.glow-bg-1');
+    const g2 = document.querySelector('.glow-bg-2');
+    if (g1) g1.style.transform = `translate(${mx * 2}px, ${my * 2}px)`;
+    if (g2) g2.style.transform = `translate(${-mx * 1.5}px, ${-my * 1.5}px)`;
+    window._cursorX = e.clientX;
+    window._cursorY = e.clientY;
+  });
+
+  // Scroll parallax
+  const pEls = document.querySelectorAll('[data-parallax]');
+  if (pEls.length > 0) {
+    const render = () => {
+      const sy = window.scrollY;
+      const vh = window.innerHeight;
+      pEls.forEach(el => {
+        const speed = parseFloat(el.getAttribute('data-parallax')) || 0.15;
+        const rect  = el.getBoundingClientRect();
+        const center = rect.top + rect.height / 2;
+        const offset = (center - vh / 2) * speed;
+        // Use translate3d for hardware acceleration
+        el.style.transform = `translate3d(0, ${offset}px, 0)`;
+      });
+      requestAnimationFrame(render);
+    };
+    render();
+  }
+}
+
+// ── NAVBAR SCROLL ─────────────────────────────────────────────
+function initNavbar() {
+  const nav = document.getElementById('navbar');
+  if (!nav) return;
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
+}
+
+// ── NUMBER COUNTERS ───────────────────────────────────────────
+function initCounters() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const el     = e.target;
+      const raw    = el.textContent.trim();
+      const num    = parseInt(raw.replace(/\D/g, ''), 10);
+      const suffix = raw.replace(/[\d]/g, '');
+      if (isNaN(num)) return;
+      const start = performance.now();
+      const dur   = 1800;
+      const tick  = now => {
+        const p = Math.min((now - start) / dur, 1);
+        const v = 1 - Math.pow(1 - p, 3); // ease-out cubic
+        el.textContent = Math.floor(v * num) + suffix;
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      obs.unobserve(el);
+    });
+  }, { threshold: 0.6 });
+
+  document.querySelectorAll('.hstat-num, .float-num').forEach(el => obs.observe(el));
+}
+
+// ── TICKER ───────────────────────────────────────────────────
+function initTicker() {
+  const track = document.querySelector('.ticker-track');
+  if (!track) return;
+  track.addEventListener('mouseenter', () => track.style.animationPlayState = 'paused');
+  track.addEventListener('mouseleave', () => track.style.animationPlayState = 'running');
+}
+
+// ── RIPPLE ───────────────────────────────────────────────────
+function initRipple() {
+  document.querySelectorAll('.cta-primary, .btn-book, .btn-nav-book').forEach(btn => {
+    btn.addEventListener('click', function (e) {
+      const rect   = this.getBoundingClientRect();
+      const ripple = document.createElement('span');
+      ripple.style.cssText = `
+        position:absolute;border-radius:50%;
+        width:220px;height:220px;
+        background:rgba(255,255,255,0.2);
+        transform:translate(-50%,-50%) scale(0);
+        left:${e.clientX - rect.left}px;
+        top:${e.clientY - rect.top}px;
+        pointer-events:none;
+        animation:rippleAnim .65s ease-out forwards;
+      `;
+      this.style.position = 'relative';
+      this.style.overflow = 'hidden';
+      this.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 700);
+    });
+  });
+
+  // Inject keyframe once
+  if (!document.getElementById('rippleStyle')) {
+    const s = document.createElement('style');
+    s.id = 'rippleStyle';
+    s.textContent = `
+      @keyframes rippleAnim { to { transform:translate(-50%,-50%) scale(3);opacity:0; } }
+    `;
+    document.head.appendChild(s);
+  }
+}
+
+// ── MODAL ────────────────────────────────────────────────────
 let modalVoiceAssistant = null;
 
-function openBookingModal() {
-    const modal = document.getElementById('bookingModal');
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+window.openBookingModal = function () {
+  const modal = document.getElementById('bookingModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  modal.classList.add('active'); // legacy class support
+  document.body.style.overflow = 'hidden';
 
-    // Initialize modal voice assistant if not already initialized
-    if (!modalVoiceAssistant) {
-        modalVoiceAssistant = new VoiceAssistant('Modal');
-        // Auto-start the session after a brief delay to ensure DOM is ready
-        setTimeout(() => {
-            modalVoiceAssistant.startSession();
-        }, 300);
-    } else if (!modalVoiceAssistant.isActive) {
-        // If assistant exists but session is not active, start it
-        modalVoiceAssistant.startSession();
-    }
-}
+  if (!modalVoiceAssistant) {
+    modalVoiceAssistant = new VoiceAssistant('Modal');
+    setTimeout(() => modalVoiceAssistant.startSession(), 300);
+  } else if (!modalVoiceAssistant.isActive) {
+    modalVoiceAssistant.startSession();
+  }
+};
 
-function closeBookingModal() {
-    const modal = document.getElementById('bookingModal');
-    modal.classList.remove('active');
-    document.body.style.overflow = ''; // Restore scrolling
+window.closeBookingModal = function () {
+  const modal = document.getElementById('bookingModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
 
-    // End session if active
-    if (modalVoiceAssistant && modalVoiceAssistant.isActive) {
-        modalVoiceAssistant.endSession();
-    }
-}
+  if (modalVoiceAssistant && modalVoiceAssistant.isActive) {
+    modalVoiceAssistant.endSession();
+  }
+};
 
-// Close modal on Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        closeBookingModal();
-    }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') window.closeBookingModal();
 });
 
-// ===========================
-// INITIALIZE APP
-// ===========================
+// ── SMOOTH SCROLL HELPERS (legacy) ───────────────────────────
+window.scrollToBooking  = () => document.getElementById('booking')  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+window.scrollToServices = () => document.getElementById('services') ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Load voices for speech synthesis
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.getVoices();
-        };
+// ── VOICE ASSISTANT ──────────────────────────────────────────
+class VoiceAssistant {
+  constructor(suffix = '') {
+    this.sessionId = null;
+    this.isActive  = false;
+    this.isListening = false;
+    this.recognition = null;
+    this.suffix    = suffix;
+
+    this.startBtn             = document.getElementById('startBtn'             + suffix);
+    this.messageInput         = document.getElementById('messageInput'         + suffix);
+    this.voiceBtn             = document.getElementById('voiceBtn'             + suffix);
+    this.sendBtn              = document.getElementById('sendBtn'              + suffix);
+    this.conversationContainer = document.getElementById('conversationContainer' + suffix);
+    this.statusText           = document.getElementById('statusText'           + suffix);
+    this.statusDot            = suffix === 'Modal'
+      ? document.getElementById('statusDot' + suffix)
+      : document.querySelector('.status-dot');
+
+    if (!this.sendBtn || !this.messageInput) return;
+    this._initEvents();
+    this._initSpeech();
+  }
+
+  _initEvents() {
+    if (this.startBtn) this.startBtn.addEventListener('click', () => this.startSession());
+    this.sendBtn.addEventListener('click',   () => this.sendMessage());
+    this.voiceBtn.addEventListener('click',  () => this.toggleVoiceInput());
+    this.messageInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
+    });
+  }
+
+  _initSpeech() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { if (this.voiceBtn) this.voiceBtn.style.display = 'none'; return; }
+    this.recognition = new SR();
+    this.recognition.continuous     = false;
+    this.recognition.interimResults = false;
+    this.recognition.lang           = 'en-US';
+    this.recognition.onresult = e => {
+      this.messageInput.value = e.results[0][0].transcript;
+      this.sendMessage();
+    };
+    this.recognition.onerror = e => {
+      console.error('Speech error:', e.error);
+      this.updateStatus('Voice error — try again', 'error');
+      this.stopListening();
+    };
+    this.recognition.onend = () => this.stopListening();
+  }
+
+  async startSession() {
+    try {
+      this.updateStatus('Starting session…', 'loading');
+      const res  = await fetch('/api/start-session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.sessionId = data.session_id;
+        this.isActive  = true;
+        if (this.startBtn) this.startBtn.style.display = 'none';
+        this.messageInput.disabled = false;
+        this.voiceBtn.disabled     = false;
+        this.sendBtn.disabled      = false;
+        this.conversationContainer.innerHTML = '';
+        this.addMessage('agent', data.message);
+        this.updateStatus('Ready — type or speak', 'active');
+        this.messageInput.focus();
+        // Activate status dot
+        if (this.statusDot) {
+          this.statusDot.classList.add('active');
+        }
+      } else {
+        this.updateStatus('Failed to start session', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      this.updateStatus('Connection error — please retry', 'error');
+    }
+  }
+
+  async sendMessage() {
+    const msg = this.messageInput.value.trim();
+    if (!msg || !this.isActive) return;
+    this.addMessage('user', msg);
+    this.messageInput.value = '';
+    this.updateStatus('Processing…', 'loading');
+    try {
+      const res  = await fetch('/api/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ session_id: this.sessionId, message: msg })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.addMessage('agent', data.response);
+        this.updateStatus('Ready — type or speak', 'active');
+        this.speakText(data.response);
+      } else {
+        this.addMessage('agent', data.response || 'Sorry, something went wrong.');
+        this.updateStatus('Error occurred', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      this.addMessage('agent', 'Connection error — please try again.');
+      this.updateStatus('Connection error', 'error');
+    }
+  }
+
+  async resetSession() {
+    if (!this.sessionId) return;
+    try {
+      await fetch('/api/reset-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ session_id: this.sessionId })
+      });
+      this.conversationContainer.innerHTML = '';
+      this.addMessage('agent', 'Session reset. How can I help you?');
+      this.updateStatus('Ready — type or speak', 'active');
+      this.messageInput.value = '';
+    } catch (err) { console.error(err); }
+  }
+
+  async endSession() {
+    if (!this.sessionId) return;
+    try {
+      await fetch('/api/end-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ session_id: this.sessionId })
+      });
+    } catch (err) { console.error(err); }
+
+    this.sessionId = null;
+    this.isActive  = false;
+    if (this.startBtn) this.startBtn.style.display = 'block';
+    this.messageInput.disabled = true;
+    this.voiceBtn.disabled     = true;
+    this.sendBtn.disabled      = true;
+    this.messageInput.value    = '';
+    this.conversationContainer.innerHTML = `
+      <div class="welcome-message">
+        <div class="assistant-avatar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+        </div>
+        <div class="message-bubble agent-message">
+          <p>Hi! I'm your dental assistant. I can help you:</p>
+          <ul>
+            <li>📅 Book a new appointment</li>
+            <li>♻️ Reschedule existing appointments</li>
+            <li>❌ Cancel appointments</li>
+          </ul>
+          <p>Click "Start" to begin!</p>
+        </div>
+      </div>`;
+    this.updateStatus('Ready to help', 'inactive');
+    if (this.statusDot) this.statusDot.classList.remove('active');
+  }
+
+  toggleVoiceInput() {
+    if (!this.recognition) {
+      alert('Voice input is not supported. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+    this.isListening ? this.recognition.stop() : this.startListening();
+  }
+
+  startListening() {
+    this.isListening = true;
+    if (this.voiceBtn) this.voiceBtn.classList.add('listening');
+    this.updateStatus('Listening… speak now', 'listening');
+    this.recognition.start();
+  }
+
+  stopListening() {
+    this.isListening = false;
+    if (this.voiceBtn) this.voiceBtn.classList.remove('listening');
+    if (this.isActive) this.updateStatus('Ready — type or speak', 'active');
+  }
+
+  addMessage(role, text) {
+    const group  = document.createElement('div');
+    group.className = `message-group ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = role === 'agent' ? 'assistant-avatar' : 'user-avatar';
+    
+    // SVG Icons for avatars
+    if (role === 'agent') {
+      avatar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`;
+    } else {
+      avatar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
     }
 
-    console.log('Voice Assistant Modal initialized');
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${role}-message`;
+
+    // Format text — handle bullet lines and bold
+    text.split('\n').filter(l => l.trim()).forEach(line => {
+      const p = document.createElement('p');
+      p.innerHTML = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      bubble.appendChild(p);
+    });
+
+    group.appendChild(avatar);
+    group.appendChild(bubble);
+    this.conversationContainer.appendChild(group);
+
+
+    this.conversationContainer.scrollTo({
+      top:      this.conversationContainer.scrollHeight,
+      behavior: 'smooth'
+    });
+  }
+
+  updateStatus(text, state) {
+    if (this.statusText) this.statusText.textContent = text;
+    if (!this.statusDot) return;
+    this.statusDot.className = 'status-dot';
+    if (state === 'active')                        this.statusDot.classList.add('active');
+    if (state === 'listening' || state === 'loading') this.statusDot.classList.add('listening');
+  }
+
+  speakText(text) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utt   = new SpeechSynthesisUtterance(text);
+    utt.rate    = 1.0;
+    utt.pitch   = 1.0;
+    utt.volume  = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const female = voices.find(v =>
+      v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Victoria')
+    );
+    if (female) utt.voice = female;
+    window.speechSynthesis.speak(utt);
+  }
+}
+
+// ── HERO LOAD ANIMATION ───────────────────────────────────────
+function initHeroReveal() {
+  window.addEventListener('load', () => {
+    const heroEls = document.querySelectorAll('.hero .reveal-up, .hero .reveal-right');
+    heroEls.forEach((el, i) => {
+      setTimeout(() => el.classList.add('visible'), 150 + i * 120);
+    });
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Load speech voices
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }
+
+  // Motion systems
+  window._cursor = new CustomCursor();
+  new ParticleField();
+  initParallax();
+  initScrollReveal();
+  initNavbar();
+  initCounters();
+  initTicker();
+  initRipple();
+  initHeroReveal();
+
+  console.log('✦ Smile Dental — All systems GO');
 });

@@ -1,123 +1,73 @@
 # 🦷 Smile Dental - AI-Powered Dental Assistant Platform
+![Full Website UI](https://i.ibb.co/example/ui.png)
 
-![Full Website UI](assets/full_website_ui.png)
+A high-end, cinematic dental appointment platform that merges **Dark Luxury Editorial** aesthetics with advanced AI capabilities. Smile Dental redefines the clinical experience through a sophisticated glassmorphic interface, effortless motion, and a real-time AI assistant.
 
-A premium, modern dental appointment management system that redefines patient interaction. Built with a glassmorphic design system and powered by advanced AI, Smile Dental offers a seamless booking experience through both a **futuristic web interface** and a **real-time voice assistant** via phone calls.
+## ✦ Design Philosophy: "The Modern Editorial"
+The platform has been rebuilt with a focus on **visual excellence** and **emotional resonance**:
+-   **Editorial Palette**: Void Black (#080808), Pearl Ivory (#f5f5f5), and a signature **Vibrant Yellow** accent (#f5d142).
+-   **Typography**: An asymmetric mix of high-contrast serif headers (**Cormorant Garamond**) and sharp, modern sans-serif bodies (**Neue Haas Grotesk**).
+-   **Glassmorphism**: Deep background blurs and micro-border gradients for a translucent, premium feel.
+-   **Cinematic Motion**: Hardware-accelerated parallax scrolling and "Reveal-on-Scroll" animations.
 
 ## ✨ Key Features
 
-### 🤖 **Dual-Mode AI Assistant**
-The core of Smile Dental is an intelligent conversational agent capable of understanding context, managing appointments, and handling complex queries.
--   **Web Assistant**: Interactive chat/voice interface directly on the website.
--   **Telephony Support**: Call the clinic's number to talk to the AI agent just like a human receptionist (powered by Twilio).
+### 🤖 **Next-Gen AI Assistant**
+The chatbot has been redesigned from the ground up to feel like a premium concierge.
+-   **Conversational Alignment**: Smart left/right message grouping with animated entry.
+-   **Aura Interaction**: A custom custom cursor that syncs with the assistant's state.
+-   **100% SVG Iconography**: No generic emojis; every action is represented by a precise, sharp line icon.
 
 ### 📅 **Smart Scheduling Engine**
--   **Instant Booking**: Collects Name, Phone, Date, Time, and Reason in natural language.
--   **Real-Time Sync**: Automatically creates Google Calendar events and updates Google Sheets.
--   **Intelligent Logic**: Enforces business hours (Mon-Sat, 9-5) and prevents scheduling conflicts.
--   **Rescheduling & Cancellation**: seamless modification of existing appointments with automatic calendar cleanup.
+-   **Predictive Booking**: Natural language processing for instant appointment extraction.
+-   **Real-Time Sync**: Instant two-way synchronization with Google Calendar and Sheets.
+-   **Conflict Resolution**: Automated checking of clinic hours and existing schedule densities.
 
-### � **Comprehensive Data Management**
--   **Customer Master Database**: Immutable records for every patient with unique Customer IDs.
--   **Appointment Logs**: Detailed history of every interaction and booking.
--   **Admin Dashboard**: Secure portal for staff to view analytics and manage schedules.
+### 🖼️ **Pantone Swatch Team Cards**
+Our team section uses a signature "Pantone Swatch" layout with a **Cinematic Wide (21:9)** aspect ratio, blending professional photography with editorial product-style presentation.
 
-## 🖼️ Gallery
-
-| AI Assistant Modal | Admin Dashboard |
-|--------------------|-----------------|
-| ![AI Modal](assets/ai_assistant_modal.png) | ![Admin](assets/admin_dashboard.png) |
-
-| Customer Database | Appointment Log |
-|-------------------|-----------------|
-| ![Master](assets/customer_master.png) | ![Log](assets/appointment_log.png) |
-
-##⚡ Quick Start Guide
-
-Follow these steps to set up the project from scratch.
-
-### 1. Prerequisites
-Ensure you have the following installed/configured:
--   **Python 3.8+**
--   **Ollama**: Install from [ollama.ai](https://ollama.ai) and pull the model: `ollama pull qwen2.5-coder:3b`
--   **Google Cloud Console**: Enable **Calendar API** and **Sheets API**.
--   **Twilio Account**: For phone capabilities (Optional).
--   **Ngrok**: For checking local development with Twilio.
-
-### 2. Installation
-
-**Clone the Repository**
-```bash
-git clone https://github.com/Dhivakar2005/DentalVoiceAgent.git
-cd DentalVoiceAgent
-```
-
-**Install Dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-**Configure Credentials**
-1.  Place your Google `credentials.json` file in the root directory.
-2.  (Optional) Ensure `sheets_config.json` is present or let the app generate it.
-
-### 3. Running the Application
-
-**Step 1: Start the Local LLM**
-Open a terminal and run:
-```bash
-ollama serve
-```
-
-**Step 2: Start the Web Server**
-Open a new terminal in the project folder and run:
-```bash
-python server.py
-```
-*The server will start at `http://localhost:5000`.*
-
-### 4. How to Use
-
-#### 🌐 Option A: Web Interface
-1.  Open your browser and navigate to `http://localhost:5000`.
-2.  Sign up or Log in.
-3.  Click **"Launch Assistant"** or **"Start Voice Booking"**.
-4.  Speak or type to the AI to book your appointment.
-
-#### 📞 Option B: Phone Call (Twilio)
-1.  Expose your local server to the internet:
-    ```bash
-    ngrok http 5000
-    ```
-2.  Copy the HTTPS URL generated by ngrok.
-3.  In your **Twilio Console** (Phone Numbers > Manage > Active Numbers), set the **Voice Webhook** to:
-    ```
-    YOUR_NGROK_URL/twilio/voice
-    ```
-4.  **Call your Twilio number!** The AI will answer and handle your booking just like on the website.
-
-## 🏗️ Project Structure
-```
-Dental/
-├── app.py                      # Core AI Agent Logic
-├── server.py                   # Flask Web Server & Twilio Webhook
-├── google_sheets_manager.py    # Database Persistence Layer
-├── templates/                  # Frontend HTML Pages
-├── static/                     # CSS & JavaScript Assets
-│   ├── css/style.css           # Premium Glassmorphism UI
-│   └── js/app.js               # Frontend Logic
-└── assets/                     # Project Screenshots & Documentation
-```
+## 📞 Telephony Support (Twilio)
+Smile Dental isn’t just a website; it’s a phone-ready agent. Call the clinic's Twilio-enabled number to parlé directly with the AI receptionist. It handles the same logic, calendar sync, and sheet updates as the web interface.
 
 ## 🔧 Technical Stack
--   **Backend**: Flask, Python
--   **AI/LLM**: Ollama (qwen2.5-coder:3b)
--   **Telephony**: Twilio Voice API, TwiML
--   **Database**: Google Sheets API, MongoDB (Auth)
--   **Scheduling**: Google Calendar API
--   **Frontend**: Vanilla JS, Modern CSS3, HTML5
+-   **Backend**: Flask / Python 3.12
+-   **AI Engine**: Ollama (qwen2.5-coder:3b) 
+-   **Communication**: Twilio Voice API, TwiML, Ngrok
+-   **Infrastructure**: Google Sheets API (v4), Google Calendar API (v3)
+-   **Frontend**: Hardware-accelerated CSS3 (Grid/Flex), Vanilla JS, RequestAnimationFrame Motion.
+-   **Typography**: Google Fonts Inter, Cormorant Garamond, DM Mono.
 
-## 🔒 Security & Privacy
--   **Role-Based Access**: Separate portals for Patients and Admins.
--   **Data Privacy**: Customer IDs are permanent and unique.
--   **Secure Auth**: Bcrypt encryption for user credentials.
+## 🚀 Installation & Local Development
+
+1.  **Clone & Install Dependencies**
+    ```bash
+    git clone https://github.com/Dhivakar2005/DentalVoiceAgent.git
+    pip install -r requirements.txt
+    ```
+2.  **Model Setup**
+    ```bash
+    ollama serve
+    ollama pull qwen2.5-coder:3b
+    ```
+3.  **Secrets Management**
+    -   Place `credentials.json` (Google Cloud) in the root.
+    -   Configure your `.env` for MongoDB/Twilio credentials.
+4.  **Launch**
+    ```bash
+    python server.py
+    ```
+
+## 🏗️ Project Architecture
+```
+Dental/
+├── app.py                      # Core AI Concierge Logic
+├── server.py                   # High-Performance Flask Backend
+├── google_sheets_manager.py    # Sheet-as-DB Persistence
+├── templates/                  # Modern Editorial Templates
+├── static/                     
+│   ├── css/style.css           # Design Tokens & Motion Logic
+│   └── js/app.js               # Reactive Frontend Controllers
+└── .gitignore                  # Optimized Environment Rules
+```
+
+---

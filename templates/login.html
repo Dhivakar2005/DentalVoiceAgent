@@ -1,210 +1,208 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smile Dental | Sign In</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@300;400;700;800&family=Pacifico&display=swap" rel="stylesheet">
     <style>
         :root {
-            --h-primary: 243;
-            --p-500: hsl(var(--h-primary), 75%, 48%);
-            --p-600: hsl(var(--h-primary), 75%, 38%);
-            --n-900: hsl(220, 30%, 8%);
-            --n-800: hsl(220, 25%, 15%);
-            --n-50: hsl(220, 15%, 97%);
-            --n-400: hsl(220, 10%, 55%);
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-blur: blur(20px);
-            --error: #ef4444;
-            --success: #10b981;
+            --accent: #d4af37;
+            --bg: #080808;
+            --bg2: #0d0d0d;
+            --border: rgba(255, 255, 255, 0.08);
+            --white: #ffffff;
+            --white-dim: rgba(255, 255, 255, 0.6);
+            --transition: 0.5s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--n-900);
-            color: var(--n-50);
-            height: 100vh;
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg);
+            color: var(--white);
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-image:
-                radial-gradient(circle at 0% 0%, hsla(var(--h-primary), 60%, 20%, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 100% 100%, hsla(243, 60%, 20%, 0.1) 0%, transparent 50%);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Ambient Background */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+            top: -200px; right: -200px;
+            pointer-events: none;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 440px;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .brand svg {
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+        .brand h1 {
+            font-family: 'Pacifico', cursive;
+            font-size: 2rem;
+            letter-spacing: -0.02em;
+        }
+        .brand h1 em {
+            color: var(--accent);
+            font-style: normal;
         }
 
         .auth-card {
-            background-color: var(--n-800);
-            width: 100%;
-            max-width: 420px;
-            padding: 3rem;
-            border-radius: 32px;
-            border: 1px solid var(--glass-border);
-            backdrop-filter: var(--glass-blur);
-            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.5);
+            background: rgba(13, 13, 13, 0.5);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 48px;
+            border-radius: 2px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.4);
         }
 
-        .logo {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .logo h1 {
-            font-size: 2rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, white 30%, var(--p-500) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.02em;
-        }
-
-        .tab-buttons {
+        .tabs {
             display: flex;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 6px;
-            border-radius: 16px;
-            margin-bottom: 2.5rem;
+            gap: 32px;
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border);
         }
-
-        .tab-btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            background: transparent;
-            color: var(--n-400);
+        .tab {
+            padding-bottom: 12px;
+            font-family: 'Righteous', cursive;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2rem;
+            color: var(--white-dim);
             cursor: pointer;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all var(--transition);
+            position: relative;
         }
-
-        .tab-btn.active {
-            background: var(--p-500);
-            color: white;
-            box-shadow: 0 10px 20px -5px hsla(var(--h-primary), 75%, 48%, 0.3);
+        .tab.active {
+            color: var(--accent);
+        }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; left: 0; right: 0;
+            height: 2px;
+            background: var(--accent);
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 24px;
         }
-
         .form-group label {
             display: block;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--white-dim);
             margin-bottom: 8px;
-            font-size: 0.9rem;
-            color: var(--n-400);
-            font-weight: 500;
         }
-
         .form-group input {
             width: 100%;
-            padding: 1rem 1.25rem;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            color: white;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+            color: var(--white);
             font-size: 1rem;
-            transition: all 0.3s;
+            font-family: 'Nunito', sans-serif;
             outline: none;
+            transition: border-color var(--transition);
         }
-
         .form-group input:focus {
-            border-color: var(--p-500);
-            background: rgba(0, 0, 0, 0.4);
+            border-color: var(--accent);
         }
 
         .btn-submit {
             width: 100%;
-            padding: 1.1rem;
-            background: linear-gradient(135deg, var(--p-500), var(--p-600));
-            color: white;
+            background: var(--accent);
+            color: var(--bg);
             border: none;
-            border-radius: 14px;
-            font-size: 1.1rem;
+            padding: 20px;
+            font-family: 'Righteous', cursive;
+            font-size: 0.8rem;
             font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
             cursor: pointer;
-            transition: all 0.4s;
-            margin-top: 1rem;
+            transition: all var(--transition);
+            margin-top: 20px;
         }
-
         .btn-submit:hover {
+            background: var(--white);
             transform: translateY(-2px);
-            filter: brightness(1.1);
-            box-shadow: 0 15px 30px -5px hsla(243, 75%, 48%, 0.4);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
         }
 
         .msg {
-            margin-top: 20px;
+            margin-top: 24px;
+            font-size: 0.85rem;
             text-align: center;
-            font-size: 0.9rem;
-            padding: 14px;
-            border-radius: 12px;
-            display: none;
-            font-weight: 500;
+            min-height: 20px;
         }
+        .msg-error { color: #ff4d4d; }
+        .msg-success { color: var(--accent); }
 
-        .msg-error {
-            color: var(--error);
-            background: hsla(0, 75%, 60%, 0.1);
-            display: block;
-        }
-
-        .msg-success {
-            color: var(--success);
-            background: hsla(160, 75%, 60%, 0.1);
-            display: block;
-        }
-
-        .hidden {
-            display: none;
-        }
+        .hidden { display: none; }
     </style>
 </head>
-
 <body>
-    <div class="auth-card">
-        <div class="logo">
-            <h1>Smile Dental</h1>
+    <div class="auth-container">
+        <div class="brand">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M2 12h20M7 7l10 10M7 17L17 7"/>
+            </svg>
+            <h1>Smile<em>Dental</em></h1>
         </div>
 
-        <div class="tab-buttons">
-            <button class="tab-btn active" id="tab-signin">Sign In</button>
-            <button class="tab-btn" id="tab-signup">Create Account</button>
+        <div class="auth-card">
+            <div class="tabs">
+                <div class="tab active" id="tab-signin">Sign In</div>
+                <div class="tab" id="tab-signup">Register</div>
+            </div>
+
+            <form id="auth-form">
+                <div id="name-group" class="form-group hidden">
+                    <label>Full Name</label>
+                    <input type="text" id="name" placeholder="John Doe">
+                </div>
+
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="email" required placeholder="name@luxury.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+
+                <button type="submit" class="btn-submit" id="submit-btn">Authenticate</button>
+            </form>
+
+            <div id="message" class="msg"></div>
         </div>
-
-        <form id="auth-form">
-            <div id="name-group" class="form-group hidden">
-                <label>Full Name</label>
-                <input type="text" id="name" placeholder="John Doe">
-            </div>
-
-            <div class="form-group">
-                <label>Email Address</label>
-                <input type="email" id="email" required placeholder="john@example.com">
-            </div>
-
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="password" required placeholder="••••••••">
-            </div>
-
-            <button type="submit" class="btn-submit" id="submit-btn"
-                style="letter-spacing: 0.02em;">Authenticate</button>
-        </form>
-
-        <div id="message" class="msg"></div>
     </div>
 
     <script>
@@ -223,7 +221,7 @@
             tabSignup.classList.remove('active');
             nameGroup.classList.add('hidden');
             submitBtn.innerText = 'Authenticate';
-            messageDiv.style.display = 'none';
+            messageDiv.innerHTML = '';
         });
 
         tabSignup.addEventListener('click', () => {
@@ -231,13 +229,14 @@
             tabSignup.classList.add('active');
             tabSignin.classList.remove('active');
             nameGroup.classList.remove('hidden');
-            submitBtn.innerText = 'Register Account';
-            messageDiv.style.display = 'none';
+            submitBtn.innerText = 'Create Account';
+            messageDiv.innerHTML = '';
         });
 
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
+            messageDiv.innerHTML = 'Validating credentials...';
+            
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const name = document.getElementById('name').value;
@@ -258,8 +257,6 @@
                 if (response.ok) {
                     messageDiv.innerText = data.message;
                     messageDiv.className = 'msg msg-success';
-                    messageDiv.style.display = 'block';
-
                     if (mode === 'signin') {
                         setTimeout(() => {
                             window.location.href = data.role === 'admin' ? '/admin' : '/';
@@ -270,15 +267,12 @@
                 } else {
                     messageDiv.innerText = data.error;
                     messageDiv.className = 'msg msg-error';
-                    messageDiv.style.display = 'block';
                 }
             } catch (error) {
-                messageDiv.innerText = 'System anomaly detected. Please try again.';
+                messageDiv.innerText = 'System error. Please try again.';
                 messageDiv.className = 'msg msg-error';
-                messageDiv.style.display = 'block';
             }
         });
     </script>
 </body>
-
 </html>

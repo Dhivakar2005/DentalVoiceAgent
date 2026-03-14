@@ -1,252 +1,275 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smile Dental | Control Center</title>
+    <title>Smile Dental | Command Center</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@300;400;700;800&family=Pacifico&display=swap" rel="stylesheet">
     <style>
         :root {
-            --h-primary: 243;
-            --p-400: hsl(var(--h-primary), 75%, 58%);
-            --p-500: hsl(var(--h-primary), 75%, 48%);
-            --n-900: hsl(220, 30%, 8%);
-            --n-800: hsl(220, 25%, 12%);
-            --n-700: hsl(220, 20%, 18%);
-            --n-50: hsl(220, 15%, 97%);
-            --n-400: hsl(220, 10%, 55%);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --success: #10b981;
+            --accent: #d4af37;
+            --bg: #080808;
+            --bg2: #0d0d0d;
+            --border: rgba(255, 255, 255, 0.08);
+            --white: #ffffff;
+            --white-dim: rgba(255, 255, 255, 0.6);
+            --transition: 0.5s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--n-900);
-            color: var(--n-50);
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg);
+            color: var(--white);
             display: flex;
             min-height: 100vh;
         }
 
-        /* Sidebar Modernized */
+        /* Sidebar */
         .sidebar {
-            width: 280px;
-            background-color: var(--n-800);
-            border-right: 1px solid var(--glass-border);
+            width: 300px;
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 2.5rem 1.5rem;
+            padding: 48px 32px;
             position: fixed;
             height: 100vh;
         }
 
-        .logo h1 {
-            font-size: 1.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, white 30%, var(--p-400) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 3rem;
+        .brand {
+            margin-bottom: 64px;
+        }
+        .brand h1 {
+            font-family: 'Pacifico', cursive;
+            font-size: 1.4rem;
+        }
+        .brand h1 em { color: var(--accent); font-style: normal; }
+
+        .nav-label {
+            font-family: 'Righteous', cursive;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--white-dim);
+            margin-bottom: 24px;
         }
 
         .nav-item {
-            padding: 12px 16px;
-            border-radius: 12px;
-            color: var(--n-400);
-            text-decoration: none;
-            margin-bottom: 8px;
-            transition: all 0.3s;
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-weight: 500;
+            gap: 16px;
+            padding: 16px;
+            color: var(--white-dim);
+            text-decoration: none;
+            border-radius: 2px;
+            margin-bottom: 8px;
+            transition: all var(--transition);
+            font-size: 0.9rem;
+            font-weight: 700;
         }
-
-        .nav-item:hover,
-        .nav-item.active {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
+        .nav-item svg { width: 20px; height: 20px; transition: transform var(--transition); }
+        .nav-item.active, .nav-item:hover {
+            background: rgba(212, 175, 55, 0.05);
+            color: var(--accent);
         }
-
-        .nav-item.active {
-            background: var(--p-500);
-            box-shadow: 0 10px 20px -5px hsla(var(--h-primary), 75%, 48%, 0.3);
-        }
+        .nav-item:hover svg { transform: translateX(4px); }
 
         .logout-btn {
             margin-top: auto;
-            padding: 12px 16px;
-            color: #ef4444;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            color: #ff4d4d;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-weight: 800;
             cursor: pointer;
-            font-weight: 600;
-            border-radius: 12px;
+            padding: 10px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 77, 77, 0.1);
+            border-radius: 4px;
+            transition: all var(--transition);
+            width: fit-content;
+        }
+        .logout-btn svg { width: 14px; height: 14px; }
+        .logout-btn:hover { 
+            background: rgba(255, 77, 77, 0.08); 
+            border-color: rgba(255, 77, 77, 0.3); 
+            transform: scale(0.98);
         }
 
-        .logout-btn:hover {
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        /* Content Area */
-        .main-content {
-            margin-left: 280px;
+        /* Main Content */
+        .main {
+            margin-left: 300px;
             flex: 1;
-            padding: 3rem;
-            background-image: radial-gradient(circle at 100% 0%, hsla(var(--h-primary), 60%, 20%, 0.1) 0%, transparent 40%);
+            padding: 64px 5vw;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 3rem;
+            align-items: flex-end;
+            margin-bottom: 64px;
         }
-
         .header h2 {
-            font-size: 2rem;
-            font-weight: 700;
+            font-family: 'Righteous', cursive;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
         }
+        .header h2 em { color: var(--accent); font-style: normal; }
 
-        .dashboard-grid {
+        .auth-badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--white-dim);
+        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+        /* Dashboard Grid */
+        .grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 2.5rem;
+            gap: 48px;
         }
 
-        .section-card {
-            background-color: var(--n-800);
-            border-radius: 24px;
-            padding: 2rem;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2);
+        .card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 40px;
+            border-radius: 2px;
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 32px;
         }
-
         .card-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--p-400);
+            font-family: 'Righteous', cursive;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.2em;
+            color: var(--accent);
         }
 
-        /* Tables Modernized */
+        /* Modern Table */
         table {
             width: 100%;
             border-collapse: collapse;
         }
-
         th {
             text-align: left;
-            padding: 12px 16px;
-            color: var(--n-400);
-            font-weight: 600;
-            font-size: 0.85rem;
+            padding: 16px;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            border-bottom: 1px solid var(--glass-border);
+            letter-spacing: 0.1em;
+            color: var(--white-dim);
+            border-bottom: 1px solid var(--border);
         }
-
         td {
-            padding: 1.25rem 1rem;
+            padding: 24px 16px;
             font-size: 0.95rem;
-            border-bottom: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--border);
         }
+        tr:hover td { background: rgba(255,255,255,0.02); }
 
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        .status-pill {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.75rem;
+        .id-badge {
+            font-family: monospace;
+            color: var(--accent);
             font-weight: 700;
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
+        }
+        .status-pill {
+            padding: 6px 12px;
+            font-size: 0.65rem;
+            font-weight: 800;
             text-transform: uppercase;
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(212, 175, 55, 0.2);
         }
 
-        /* Loading */
-        .loading-overlay {
+        /* Loader */
+        .loading {
+            height: 200px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            height: 150px;
+            justify-content: center;
         }
-
         .loader {
-            width: 32px;
-            height: 32px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-top-color: var(--p-500);
+            width: 24px; height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+        @media (max-width: 1024px) {
+            .sidebar { width: 80px; padding: 48px 16px; }
+            .nav-text, .nav-label, .brand h1, .logout-btn span { display: none; }
+            .main { margin-left: 80px; }
         }
     </style>
 </head>
-
 <body>
     <div class="sidebar">
-        <div class="logo">
-            <h1>Smile Control</h1>
+        <div class="brand">
+            <h1>Smile<em>Control</em></h1>
         </div>
-        <a href="#" class="nav-item active">Dashboard</a>
-        <a href="/" class="nav-item">Assistant View</a>
-        <div class="logout-btn" onclick="logout()">Terminate Session</div>
+        <div class="nav-section">
+            <p class="nav-label">COMMANDS</p>
+            <a href="#" class="nav-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="/" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span class="nav-text">Assistant View</span>
+            </a>
+        </div>
+        <div class="logout-btn" onclick="logout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span>Terminate</span>
+        </div>
     </div>
 
-    <div class="main-content">
+    <div class="main">
         <div class="header">
-            <h2>Command Center</h2>
-            <div id="admin-name" style="color: var(--n-400); font-weight: 500;">Authorized: System Admin</div>
+            <div>
+                <h2>Command <em>Center.</em></h2>
+            </div>
+            <div id="admin-name" class="auth-badge">
+                <span class="status-dot"></span>
+                Authorized: System Admin
+            </div>
         </div>
 
-        <div class="dashboard-grid">
-            <div class="section-card">
+        <div class="grid">
+            <div class="card">
                 <div class="card-header">
                     <div class="card-title">Sheet Registry</div>
                 </div>
                 <div id="sheets-container">
-                    <div class="loading-overlay">
-                        <div class="loader"></div>
-                    </div>
+                    <div class="loading"><div class="loader"></div></div>
                 </div>
             </div>
 
-            <div class="section-card">
+            <div class="card">
                 <div class="card-header">
-                    <div class="card-title">Calendar Streams</div>
+                    <div class="card-title">Calendar Stream</div>
                 </div>
                 <div id="calendar-container">
-                    <div class="loading-overlay">
-                        <div class="loader"></div>
-                    </div>
+                    <div class="loading"><div class="loader"></div></div>
                 </div>
             </div>
         </div>
@@ -257,52 +280,35 @@
             try {
                 const response = await fetch('/api/admin/data');
                 const data = await response.json();
-
                 if (data.success) {
                     renderSheets(data.appointments);
                     renderCalendar(data.calendar_events);
                 }
             } catch (error) {
-                console.error('Fetch System Error:', error);
+                console.error('Fetch Error:', error);
             }
         }
 
         function renderSheets(appointments) {
             const container = document.getElementById('sheets-container');
             if (!appointments || appointments.length === 0) {
-                container.innerHTML = '<p style="color: var(--n-400)">No data records found.</p>';
+                container.innerHTML = '<p style="color: var(--white-dim)">No records found.</p>';
                 return;
             }
 
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Ref ID</th>
-                            <th>Patient Identifier</th>
-                            <th>Contact</th>
-                            <th>Schedule</th>
-                            <th>Objective</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
+            let html = `<table><thead><tr><th>Ref ID</th><th>Patient</th><th>Contact</th><th>Schedule</th><th>Objective</th></tr></thead><tbody>`;
             appointments.forEach(app => {
-                html += `
-                    <tr>
-                        <td style="color: var(--p-400); font-weight: 700; font-family: monospace;">${app.customer_id}</td>
-                        <td style="font-weight: 600">${app.name}</td>
-                        <td style="opacity: 0.8">${app.phone}</td>
-                        <td>
-                            <div style="font-weight: 500">${app.appointment_date || app.created_date || 'N/A'}</div>
-                            <div style="font-size: 0.8rem; opacity: 0.6">${app.appointment_time || ''}</div>
-                        </td>
-                        <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.8">${app.appointment_reason || 'N/A'}</td>
-                    </tr>
-                `;
+                html += `<tr>
+                    <td class="id-badge">${app.customer_id}</td>
+                    <td style="font-weight: 700">${app.name}</td>
+                    <td style="opacity: 0.6">${app.phone}</td>
+                    <td>
+                        <div style="font-weight: 700">${app.appointment_date || app.created_date || 'N/A'}</div>
+                        <div style="font-size: 0.7rem; color: var(--accent)">${app.appointment_time || ''}</div>
+                    </td>
+                    <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.8">${app.appointment_reason || 'N/A'}</td>
+                </tr>`;
             });
-
             html += '</tbody></table>';
             container.innerHTML = html;
         }
@@ -310,33 +316,19 @@
         function renderCalendar(events) {
             const container = document.getElementById('calendar-container');
             if (!events || events.length === 0) {
-                container.innerHTML = '<p style="color: var(--n-400)">No active streams.</p>';
+                container.innerHTML = '<p style="color: var(--white-dim)">No active streams.</p>';
                 return;
             }
 
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Event Signature</th>
-                            <th>Start Timeline</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
+            let html = `<table><thead><tr><th>Signature</th><th>Timeline</th><th>Status</th></tr></thead><tbody>`;
             events.forEach(event => {
                 const start = new Date(event.start.dateTime || event.start.date);
-                html += `
-                    <tr>
-                        <td style="font-weight: 600">${event.summary}</td>
-                        <td>${start.toLocaleString()}</td>
-                        <td><span class="status-pill">Active</span></td>
-                    </tr>
-                `;
+                html += `<tr>
+                    <td style="font-weight: 700">${event.summary}</td>
+                    <td style="opacity: 0.8">${start.toLocaleString()}</td>
+                    <td><span class="status-pill">Active</span></td>
+                </tr>`;
             });
-
             html += '</tbody></table>';
             container.innerHTML = html;
         }
@@ -349,5 +341,4 @@
         fetchData();
     </script>
 </body>
-
 </html>

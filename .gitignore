@@ -19,6 +19,19 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.mypy_cache/
+.pyre/
+.pytype/
 
 # Virtual Environment
 venv/
@@ -42,6 +55,8 @@ credentials.json
 token.pickle
 sheets_config.json
 .env
+FAQ.txt
+__init__.py
 
 # API Keys - Keep these secret!
 # Never commit files with real API keys
@@ -53,3 +68,8 @@ error_log.txt
 *.log
 test_twilio_call.py
 t.py
+check_app.py
+*.bak
+*.tmp
+*.temp
+.DS_Store
