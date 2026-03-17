@@ -35,7 +35,7 @@ try:
 except ImportError:
     SPEECH_RECOGNITION_AVAILABLE = False
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
+# ── CONFIG 
 OLLAMA_BASE_URL          = "http://localhost:11434"
 OLLAMA_MODEL             = "qwen2.5-coder:3b"
 SCOPES = [
@@ -633,17 +633,27 @@ class DentalVoiceAgent:
         return [f for f in fields if not self.state.get(f)]
 
     def _prompt_for(self, field):
-        return {
-            "patient_type":       "Are you a new or existing patient?",
-            "customer_id":        "Please tell me your customer ID, for example CUST001.",
-            "name":               "What is your full name?",
-            "phone":              "What is your phone number?",
-            "date":               "What date would you like? You can say tomorrow or give a specific date.",
-            "time":               "What time would you prefer? We are open 9 AM to 5 PM.",
-            "reason":             "What is the reason for your visit?",
-            "new_date":           "What is your preferred new date?",
-            "new_time":           "What is your preferred new time?",
-        }.get(field, f"Please provide your {field}.")
+        intent = self.state.get("intent")
+        prompts = {
+        "patient_type":  "Are you a new or existing patient?",
+        "customer_id":   "Please tell me your customer ID, for example CUST001.",
+        "name":          "What is your full name?",
+        "phone":         "What is your phone number?",
+        "date": (
+            "What is the date of your existing appointment?"
+            if intent in ("reschedule", "cancel")
+            else "What date would you like? You can say tomorrow or give a specific date."
+        ),
+        "time": (
+            "What time is your existing appointment?"
+            if intent in ("reschedule", "cancel")
+            else "What time would you prefer? We are open 9 AM to 5 PM."
+        ),
+        "reason":    "What is the reason for your visit?",
+        "new_date":  "What is your preferred new date?",
+        "new_time":  "What is your preferred new time?",
+    }
+        return prompts.get(field, f"Please provide your {field}.") 
 
     def _confirm_prompt(self):
         s = self.state; i = s.get("intent", "")

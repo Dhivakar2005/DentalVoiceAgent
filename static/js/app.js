@@ -224,6 +224,49 @@ function initNavbar() {
   window.addEventListener('scroll', () => {
     nav.classList.toggle('scrolled', window.scrollY > 60);
   }, { passive: true });
+
+  // ── USER DROPDOWN ──────────────────────────────────────
+  const pill = document.getElementById('userPillToggle');
+  const dropdown = document.getElementById('userProfileDropdown');
+  if (pill && dropdown) {
+    pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('show');
+    });
+    document.addEventListener('click', () => dropdown.classList.remove('show'));
+  }
+
+  // ── BACK TO TOP ──────────────────────────────────────
+  const btt = document.getElementById('backToTop');
+  if (btt) {
+    window.addEventListener('scroll', () => {
+      btt.classList.toggle('visible', window.scrollY > 800);
+    }, { passive: true });
+  }
+
+  // ── CINEMATIC SCROLL ──────────────────────────────────
+  const scrollHint = document.getElementById('heroScrollHint');
+  if (scrollHint) {
+    scrollHint.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = scrollHint.getAttribute('href');
+      const targetEl = document.querySelector(targetId);
+      if (!targetEl) return;
+
+      let overlay = document.querySelector('.scroll-transition');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'scroll-transition';
+        document.body.appendChild(overlay);
+      }
+
+      overlay.classList.add('active');
+      setTimeout(() => {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => overlay.classList.remove('active'), 600);
+      }, 100);
+    });
+  }
 }
 
 // ── NUMBER COUNTERS ───────────────────────────────────────────
@@ -231,23 +274,37 @@ function initCounters() {
   const obs = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (!e.isIntersecting) return;
-      const el     = e.target;
-      const raw    = el.textContent.trim();
-      const num    = parseInt(raw.replace(/\D/g, ''), 10);
-      const suffix = raw.replace(/[\d]/g, '');
-      if (isNaN(num)) return;
-      const start = performance.now();
-      const dur   = 1800;
-      const tick  = now => {
-        const p = Math.min((now - start) / dur, 1);
-        const v = 1 - Math.pow(1 - p, 3); // ease-out cubic
-        el.textContent = Math.floor(v * num) + suffix;
-        if (p < 1) requestAnimationFrame(tick);
+      const el = e.target;
+      const raw = el.textContent.trim();
+      
+      // Match number and suffix
+      const match = raw.match(/^(\d+)(.*)$/);
+      if (!match) return;
+      
+      const targetNum = parseInt(match[1], 10);
+      const suffix = match[2];
+      
+      const duration = 2000;
+      const startTime = performance.now();
+      
+      const update = (now) => {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 4); // easeOutQuart
+        const currentNum = Math.floor(easeOut * targetNum);
+        
+        el.textContent = currentNum + suffix;
+        
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        } else {
+          el.textContent = raw; // Ensure final text is exact
+        }
       };
-      requestAnimationFrame(tick);
+      
+      requestAnimationFrame(update);
       obs.unobserve(el);
     });
-  }, { threshold: 0.6 });
+  }, { threshold: 0.1 });
 
   document.querySelectorAll('.hstat-num, .float-num').forEach(el => obs.observe(el));
 }

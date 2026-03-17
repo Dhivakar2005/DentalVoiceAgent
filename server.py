@@ -45,14 +45,14 @@ def get_admin_agent():
                 _admin_agent = DentalVoiceAgent(use_voice=False)
     return _admin_agent
 
-# ── DATABASE ──────────────────────────────────────────────────────────────────
+#  DATABASE 
 db = DatabaseManager(app)
 
-# ── ACTIVE SESSIONS ───────────────────────────────────────────────────────────
+#  ACTIVE SESSIONS 
 sessions      = {}
 sessions_lock = threading.Lock()
 
-# ── OLLAMA WARM-UP ────────────────────────────────────────────────────────────
+# OLLAMA WARM-UP 
 def warmup_ollama():
     """Load the model into GPU memory at startup to avoid cold-start delays."""
     try:
@@ -77,7 +77,7 @@ def warmup_ollama():
 
 threading.Thread(target=warmup_ollama, daemon=True).start()
 
-# ── OLLAMA HEARTBEAT ──────────────────────────────────────────────────────────
+#  OLLAMA HEARTBEAT 
 def ollama_heartbeat():
     """Ping Ollama every 4 min to keep the model in VRAM (default unload = 5 min)."""
     while True:
@@ -89,7 +89,7 @@ def ollama_heartbeat():
 
 threading.Thread(target=ollama_heartbeat, daemon=True).start()
 
-# ── SESSION CLEANUP ───────────────────────────────────────────────────────────
+#  SESSION CLEANUP 
 def cleanup_sessions():
     """Remove sessions that have been idle longer than SESSION_TTL."""
     while True:
@@ -107,7 +107,7 @@ def cleanup_sessions():
 
 threading.Thread(target=cleanup_sessions, daemon=True).start()
 
-# ── WEB VOICE AGENT WRAPPER ───────────────────────────────────────────────────
+#  WEB VOICE AGENT WRAPPER 
 class WebVoiceAgent:
     """Wraps DentalVoiceAgent for the web / Twilio interface."""
 
@@ -149,7 +149,7 @@ class WebVoiceAgent:
         self.conversation_history = []
         self.last_active          = time.time()
 
-# ── AUTH DECORATORS ───────────────────────────────────────────────────────────
+#  AUTH DECORATORS 
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -166,7 +166,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ── AUTH ROUTES ───────────────────────────────────────────────────────────────
+#  AUTH ROUTES 
 @app.route('/signin', methods=['GET', 'POST'])
 def signin():
     if request.method == 'POST':
@@ -205,9 +205,9 @@ def logout():
 def index():
     if 'user_id' not in session:
         return render_template('login.html', type='signin')
-    return render_template('index.html', user_name=session.get('name'))
+    return render_template('index.html', user_name=session.get('name'), role=session.get('role'))
 
-# ── ADMIN ROUTES ──────────────────────────────────────────────────────────────
+#  ADMIN ROUTES 
 @app.route('/admin')
 def admin_dashboard():
     if session.get('role') != 'admin':
@@ -253,7 +253,7 @@ def get_admin_data():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# ── CHAT SESSION ROUTES ───────────────────────────────────────────────────────
+#  CHAT SESSION ROUTES 
 @app.route('/api/start-session', methods=['POST'])
 def start_session():
     session_id = str(uuid.uuid4())

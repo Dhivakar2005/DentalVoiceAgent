@@ -9,12 +9,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@300;400;700;800&family=Pacifico&display=swap" rel="stylesheet">
     <style>
         :root {
-            --accent: #d4af37;
+            --accent: #f5d142;     /* Vibrant Editorial Yellow */
             --bg: #080808;
             --bg2: #0d0d0d;
             --border: rgba(255, 255, 255, 0.08);
             --white: #ffffff;
             --white-dim: rgba(255, 255, 255, 0.6);
+            --white-faint: rgba(255, 255, 255, 0.1);
             --transition: 0.5s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
@@ -30,6 +31,34 @@
             justify-content: center;
             overflow: hidden;
             position: relative;
+            cursor: none;
+        }
+
+        /* ── CURSOR ── */
+        #cursor {
+            position: fixed;
+            width: 10px; height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 99999;
+            transform: translate(-50%, -50%);
+            transition: transform 0.08s, width 0.3s, height 0.3s;
+            mix-blend-mode: exclusion;
+            box-shadow: 0 0 15px rgba(245, 209, 66, 0.3);
+        }
+        #cursorTrail {
+            position: fixed;
+            width: 50px; height: 50px;
+            background: transparent;
+            border: 2px solid var(--accent);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 99998;
+            transform: translate(-50%, -50%);
+            transition: transform 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+            mix-blend-mode: exclusion;
+            opacity: 0.5;
         }
 
         /* Ambient Background */
@@ -69,13 +98,23 @@
         }
 
         .auth-card {
-            background: rgba(13, 13, 13, 0.5);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 48px;
-            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid var(--border);
+            padding: 64px 48px;
+            border-radius: 4px;
             box-shadow: 0 40px 100px rgba(0,0,0,0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.4;
         }
 
         .tabs {
@@ -120,18 +159,28 @@
         }
         .form-group input {
             width: 100%;
-            background: transparent;
-            border: none;
-            border-bottom: 1px solid var(--border);
-            padding: 12px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 18px 20px;
             color: var(--white);
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-family: 'Nunito', sans-serif;
             outline: none;
-            transition: border-color var(--transition);
+            transition: all var(--transition);
         }
         .form-group input:focus {
             border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 20px rgba(245, 209, 66, 0.05);
+        }
+        /* Fix Chrome autofill blue */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus {
+            -webkit-text-fill-color: var(--white);
+            -webkit-box-shadow: 0 0 0px 1000px #0a0a0a inset;
+            transition: background-color 5000s ease-in-out 0s;
         }
 
         .btn-submit {
@@ -168,12 +217,15 @@
     </style>
 </head>
 <body>
+    <div id="cursor"></div>
+    <div id="cursorTrail"></div>
+
     <div class="auth-container">
         <div class="brand">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v20M2 12h20M7 7l10 10M7 17L17 7"/>
             </svg>
-            <h1>Smile<em>Dental</em></h1>
+            <h1>Smile <em>Dental</em></h1>
         </div>
 
         <div class="auth-card">
@@ -272,6 +324,41 @@
                 messageDiv.innerText = 'System error. Please try again.';
                 messageDiv.className = 'msg msg-error';
             }
+        });
+
+        // ── CURSOR LOGIC ──────────────────────────────────────
+        const cursor = document.getElementById('cursor');
+        const trail = document.getElementById('cursorTrail');
+        let mouseX = 0, mouseY = 0;
+        let trailX = 0, trailY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top  = mouseY + 'px';
+        });
+
+        const tick = () => {
+            trailX += (mouseX - trailX) * 0.15;
+            trailY += (mouseY - trailY) * 0.15;
+            trail.style.left = trailX + 'px';
+            trail.style.top  = trailY + 'px';
+            requestAnimationFrame(tick);
+        };
+        tick();
+
+        // Hover effects for inputs and buttons
+        const interactibles = document.querySelectorAll('input, button, .tab');
+        interactibles.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.style.width = '24px';
+                cursor.style.height = '24px';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.style.width = '10px';
+                cursor.style.height = '10px';
+            });
         });
     </script>
 </body>

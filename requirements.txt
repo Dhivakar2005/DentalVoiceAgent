@@ -18,3 +18,4 @@ Flask-CORS==4.0.0
 pymongo
 flask-bcrypt
 twilio
+tzdata
