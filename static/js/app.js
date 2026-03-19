@@ -3,17 +3,17 @@
 //  All voice assistant logic + full motion graphics merged
 // ============================================================
 
-// ── CUSTOM CURSOR ────────────────────────────────────────────
+//  CUSTOM CURSOR 
 class CustomCursor {
   constructor() {
-    this.cursor      = document.getElementById('cursor');
-    this.trail       = document.getElementById('cursorTrail');
-    this.smileEl     = document.getElementById('smileBlast');
-    this.mouseX      = -100;
-    this.mouseY      = -100;
-    this.trailX      = -100;
-    this.trailY      = -100;
-    this.smilePool   = ['😁','😄','🦷','✨','💚','🌟','😎','🎉','💎','🔥'];
+    this.cursor = document.getElementById('cursor');
+    this.trail = document.getElementById('cursorTrail');
+    this.smileEl = document.getElementById('smileBlast');
+    this.mouseX = -100;
+    this.mouseY = -100;
+    this.trailX = -100;
+    this.trailY = -100;
+    this.smilePool = ['😁', '😄', '🦷', '✨', '💚', '🌟', '😎', '🎉', '💎', '🔥'];
 
     if (!this.cursor) return;
     this._trackMouse();
@@ -27,7 +27,7 @@ class CustomCursor {
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
       this.cursor.style.left = e.clientX + 'px';
-      this.cursor.style.top  = e.clientY + 'px';
+      this.cursor.style.top = e.clientY + 'px';
     });
   }
 
@@ -37,7 +37,7 @@ class CustomCursor {
       this.trailY += (this.mouseY - this.trailY) * 0.12;
       if (this.trail) {
         this.trail.style.left = this.trailX + 'px';
-        this.trail.style.top  = this.trailY + 'px';
+        this.trail.style.top = this.trailY + 'px';
       }
       requestAnimationFrame(tick);
     };
@@ -48,14 +48,14 @@ class CustomCursor {
     const targets = document.querySelectorAll('a, button, .service-card, .team-card, .process-step, .ai-fab, .btn, .nav-links li');
     targets.forEach(el => {
       el.addEventListener('mouseenter', () => {
-        this.cursor.style.width    = '28px';
-        this.cursor.style.height   = '28px';
+        this.cursor.style.width = '28px';
+        this.cursor.style.height = '28px';
         this.cursor.style.background = 'var(--accent-glow)';
         if (this.trail) this.trail.style.borderColor = 'var(--accent)';
       });
       el.addEventListener('mouseleave', () => {
-        this.cursor.style.width    = '12px';
-        this.cursor.style.height   = '12px';
+        this.cursor.style.width = '12px';
+        this.cursor.style.height = '12px';
         this.cursor.style.background = 'var(--white)';
         if (this.trail) this.trail.style.borderColor = 'rgba(255,255,255,0.2)';
       });
@@ -82,7 +82,7 @@ class CustomCursor {
     const emoji = this.smilePool[Math.floor(Math.random() * this.smilePool.length)];
     this.smileEl.textContent = emoji;
     this.smileEl.style.left = x + 'px';
-    this.smileEl.style.top  = y + 'px';
+    this.smileEl.style.top = y + 'px';
     this.smileEl.style.fontSize = (1.4 + Math.random() * 0.8) + 'rem';
     this.smileEl.classList.remove('blast');
     void this.smileEl.offsetWidth; // force reflow
@@ -91,7 +91,7 @@ class CustomCursor {
     // Extra mini-bursts
     for (let i = 0; i < 6; i++) {
       const mini = document.createElement('div');
-      mini.className   = 'smile-blast';
+      mini.className = 'smile-blast';
       mini.textContent = this.smilePool[Math.floor(Math.random() * this.smilePool.length)];
       const ox = x + (Math.random() - 0.5) * 100;
       const oy = y + (Math.random() - 0.5) * 100;
@@ -116,12 +116,12 @@ window.smileBlastAt = function (e) {
   if (window._cursor) window._cursor.blast(x, y);
 };
 
-// ── PARTICLE CANVAS ──────────────────────────────────────────
+//  PARTICLE CANVAS 
 class ParticleField {
   constructor() {
     this.canvas = document.getElementById('particleCanvas');
     if (!this.canvas) return;
-    this.ctx   = this.canvas.getContext('2d');
+    this.ctx = this.canvas.getContext('2d');
     this.parts = [];
     this._resize();
     window.addEventListener('resize', () => this._resize());
@@ -130,7 +130,7 @@ class ParticleField {
   }
 
   _resize() {
-    this.W = this.canvas.width  = window.innerWidth;
+    this.W = this.canvas.width = window.innerWidth;
     this.H = this.canvas.height = window.innerHeight;
   }
 
@@ -144,14 +144,14 @@ class ParticleField {
 class Particle {
   constructor(W, H) { this.W = W; this.H = H; this._reset(); this.y = Math.random() * H; }
   _reset() {
-    this.x    = Math.random() * this.W;
-    this.y    = this.H + 10;
-    this.r    = 0.5 + Math.random() * 1.5;
-    this.vx   = (Math.random() - 0.5) * 0.35;
-    this.vy   = -(0.25 + Math.random() * 0.45);
-    this.a    = 0.08 + Math.random() * 0.35;
+    this.x = Math.random() * this.W;
+    this.y = this.H + 10;
+    this.r = 0.5 + Math.random() * 1.5;
+    this.vx = (Math.random() - 0.5) * 0.35;
+    this.vy = -(0.25 + Math.random() * 0.45);
+    this.a = 0.08 + Math.random() * 0.35;
     this.life = 0;
-    this.max  = 180 + Math.random() * 280;
+    this.max = 180 + Math.random() * 280;
   }
   update(W, H) {
     this.x += this.vx; this.y += this.vy; this.life++;
@@ -161,7 +161,7 @@ class Particle {
     const ratio = this.life / this.max;
     ctx.save();
     ctx.globalAlpha = this.a * (1 - ratio);
-    ctx.fillStyle   = '#00ff87';
+    ctx.fillStyle = '#00ff87';
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
     ctx.fill();
@@ -169,7 +169,7 @@ class Particle {
   }
 }
 
-// ── SCROLL REVEAL ────────────────────────────────────────────
+//  SCROLL REVEAL 
 function initScrollReveal() {
   const els = document.querySelectorAll('.reveal-up, .reveal-right, .fade-up');
   const obs = new IntersectionObserver(entries => {
@@ -183,11 +183,11 @@ function initScrollReveal() {
   els.forEach(el => obs.observe(el));
 }
 
-// ── PARALLAX ─────────────────────────────────────────────────
+//  PARALLAX ─
 function initParallax() {
   // Mouse parallax for glow orbs
   document.addEventListener('mousemove', e => {
-    const mx = (e.clientX - window.innerWidth  / 2) * 0.012;
+    const mx = (e.clientX - window.innerWidth / 2) * 0.012;
     const my = (e.clientY - window.innerHeight / 2) * 0.012;
     const g1 = document.querySelector('.glow-bg-1');
     const g2 = document.querySelector('.glow-bg-2');
@@ -205,7 +205,7 @@ function initParallax() {
       const vh = window.innerHeight;
       pEls.forEach(el => {
         const speed = parseFloat(el.getAttribute('data-parallax')) || 0.15;
-        const rect  = el.getBoundingClientRect();
+        const rect = el.getBoundingClientRect();
         const center = rect.top + rect.height / 2;
         const offset = (center - vh / 2) * speed;
         // Use translate3d for hardware acceleration
@@ -217,7 +217,7 @@ function initParallax() {
   }
 }
 
-// ── NAVBAR SCROLL ─────────────────────────────────────────────
+//  NAVBAR SCROLL ─
 function initNavbar() {
   const nav = document.getElementById('navbar');
   if (!nav) return;
@@ -225,7 +225,7 @@ function initNavbar() {
     nav.classList.toggle('scrolled', window.scrollY > 60);
   }, { passive: true });
 
-  // ── USER DROPDOWN ──────────────────────────────────────
+  //  USER DROPDOWN 
   const pill = document.getElementById('userPillToggle');
   const dropdown = document.getElementById('userProfileDropdown');
   if (pill && dropdown) {
@@ -236,7 +236,7 @@ function initNavbar() {
     document.addEventListener('click', () => dropdown.classList.remove('show'));
   }
 
-  // ── BACK TO TOP ──────────────────────────────────────
+  //  BACK TO TOP 
   const btt = document.getElementById('backToTop');
   if (btt) {
     window.addEventListener('scroll', () => {
@@ -244,7 +244,7 @@ function initNavbar() {
     }, { passive: true });
   }
 
-  // ── CINEMATIC SCROLL ──────────────────────────────────
+  //  CINEMATIC SCROLL 
   const scrollHint = document.getElementById('heroScrollHint');
   if (scrollHint) {
     scrollHint.addEventListener('click', (e) => {
@@ -269,38 +269,38 @@ function initNavbar() {
   }
 }
 
-// ── NUMBER COUNTERS ───────────────────────────────────────────
+//  NUMBER COUNTERS ─
 function initCounters() {
   const obs = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (!e.isIntersecting) return;
       const el = e.target;
       const raw = el.textContent.trim();
-      
+
       // Match number and suffix
       const match = raw.match(/^(\d+)(.*)$/);
       if (!match) return;
-      
+
       const targetNum = parseInt(match[1], 10);
       const suffix = match[2];
-      
+
       const duration = 2000;
       const startTime = performance.now();
-      
+
       const update = (now) => {
         const progress = Math.min((now - startTime) / duration, 1);
         const easeOut = 1 - Math.pow(1 - progress, 4); // easeOutQuart
         const currentNum = Math.floor(easeOut * targetNum);
-        
+
         el.textContent = currentNum + suffix;
-        
+
         if (progress < 1) {
           requestAnimationFrame(update);
         } else {
           el.textContent = raw; // Ensure final text is exact
         }
       };
-      
+
       requestAnimationFrame(update);
       obs.unobserve(el);
     });
@@ -309,7 +309,7 @@ function initCounters() {
   document.querySelectorAll('.hstat-num, .float-num').forEach(el => obs.observe(el));
 }
 
-// ── TICKER ───────────────────────────────────────────────────
+//  TICKER ─
 function initTicker() {
   const track = document.querySelector('.ticker-track');
   if (!track) return;
@@ -317,11 +317,11 @@ function initTicker() {
   track.addEventListener('mouseleave', () => track.style.animationPlayState = 'running');
 }
 
-// ── RIPPLE ───────────────────────────────────────────────────
+//  RIPPLE ─
 function initRipple() {
   document.querySelectorAll('.cta-primary, .btn-book, .btn-nav-book').forEach(btn => {
     btn.addEventListener('click', function (e) {
-      const rect   = this.getBoundingClientRect();
+      const rect = this.getBoundingClientRect();
       const ripple = document.createElement('span');
       ripple.style.cssText = `
         position:absolute;border-radius:50%;
@@ -351,7 +351,7 @@ function initRipple() {
   }
 }
 
-// ── MODAL ────────────────────────────────────────────────────
+//  MODAL 
 let modalVoiceAssistant = null;
 
 window.openBookingModal = function () {
@@ -385,26 +385,26 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') window.closeBookingModal();
 });
 
-// ── SMOOTH SCROLL HELPERS (legacy) ───────────────────────────
-window.scrollToBooking  = () => document.getElementById('booking')  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-window.scrollToServices = () => document.getElementById('services') ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+//  SMOOTH SCROLL HELPERS (legacy) ─
+window.scrollToBooking = () => document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+window.scrollToServices = () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-// ── VOICE ASSISTANT ──────────────────────────────────────────
+//  VOICE ASSISTANT 
 class VoiceAssistant {
   constructor(suffix = '') {
     this.sessionId = null;
-    this.isActive  = false;
+    this.isActive = false;
     this.isListening = false;
     this.recognition = null;
-    this.suffix    = suffix;
+    this.suffix = suffix;
 
-    this.startBtn             = document.getElementById('startBtn'             + suffix);
-    this.messageInput         = document.getElementById('messageInput'         + suffix);
-    this.voiceBtn             = document.getElementById('voiceBtn'             + suffix);
-    this.sendBtn              = document.getElementById('sendBtn'              + suffix);
+    this.startBtn = document.getElementById('startBtn' + suffix);
+    this.messageInput = document.getElementById('messageInput' + suffix);
+    this.voiceBtn = document.getElementById('voiceBtn' + suffix);
+    this.sendBtn = document.getElementById('sendBtn' + suffix);
     this.conversationContainer = document.getElementById('conversationContainer' + suffix);
-    this.statusText           = document.getElementById('statusText'           + suffix);
-    this.statusDot            = suffix === 'Modal'
+    this.statusText = document.getElementById('statusText' + suffix);
+    this.statusDot = suffix === 'Modal'
       ? document.getElementById('statusDot' + suffix)
       : document.querySelector('.status-dot');
 
@@ -415,8 +415,8 @@ class VoiceAssistant {
 
   _initEvents() {
     if (this.startBtn) this.startBtn.addEventListener('click', () => this.startSession());
-    this.sendBtn.addEventListener('click',   () => this.sendMessage());
-    this.voiceBtn.addEventListener('click',  () => this.toggleVoiceInput());
+    this.sendBtn.addEventListener('click', () => this.sendMessage());
+    this.voiceBtn.addEventListener('click', () => this.toggleVoiceInput());
     this.messageInput.addEventListener('keypress', e => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
     });
@@ -426,9 +426,9 @@ class VoiceAssistant {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { if (this.voiceBtn) this.voiceBtn.style.display = 'none'; return; }
     this.recognition = new SR();
-    this.recognition.continuous     = false;
+    this.recognition.continuous = false;
     this.recognition.interimResults = false;
-    this.recognition.lang           = 'en-US';
+    this.recognition.lang = 'en-US';
     this.recognition.onresult = e => {
       this.messageInput.value = e.results[0][0].transcript;
       this.sendMessage();
@@ -444,17 +444,17 @@ class VoiceAssistant {
   async startSession() {
     try {
       this.updateStatus('Starting session…', 'loading');
-      const res  = await fetch('/api/start-session', {
+      const res = await fetch('/api/start-session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }
       });
       const data = await res.json();
       if (data.success) {
         this.sessionId = data.session_id;
-        this.isActive  = true;
+        this.isActive = true;
         if (this.startBtn) this.startBtn.style.display = 'none';
         this.messageInput.disabled = false;
-        this.voiceBtn.disabled     = false;
-        this.sendBtn.disabled      = false;
+        this.voiceBtn.disabled = false;
+        this.sendBtn.disabled = false;
         this.conversationContainer.innerHTML = '';
         this.addMessage('agent', data.message);
         this.updateStatus('Ready — type or speak', 'active');
@@ -479,10 +479,10 @@ class VoiceAssistant {
     this.messageInput.value = '';
     this.updateStatus('Processing…', 'loading');
     try {
-      const res  = await fetch('/api/send-message', {
+      const res = await fetch('/api/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ session_id: this.sessionId, message: msg })
+        body: JSON.stringify({ session_id: this.sessionId, message: msg })
       });
       const data = await res.json();
       if (data.success) {
@@ -506,7 +506,7 @@ class VoiceAssistant {
       await fetch('/api/reset-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ session_id: this.sessionId })
+        body: JSON.stringify({ session_id: this.sessionId })
       });
       this.conversationContainer.innerHTML = '';
       this.addMessage('agent', 'Session reset. How can I help you?');
@@ -521,17 +521,17 @@ class VoiceAssistant {
       await fetch('/api/end-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ session_id: this.sessionId })
+        body: JSON.stringify({ session_id: this.sessionId })
       });
     } catch (err) { console.error(err); }
 
     this.sessionId = null;
-    this.isActive  = false;
+    this.isActive = false;
     if (this.startBtn) this.startBtn.style.display = 'block';
     this.messageInput.disabled = true;
-    this.voiceBtn.disabled     = true;
-    this.sendBtn.disabled      = true;
-    this.messageInput.value    = '';
+    this.voiceBtn.disabled = true;
+    this.sendBtn.disabled = true;
+    this.messageInput.value = '';
     this.conversationContainer.innerHTML = `
       <div class="welcome-message">
         <div class="assistant-avatar">
@@ -573,12 +573,12 @@ class VoiceAssistant {
   }
 
   addMessage(role, text) {
-    const group  = document.createElement('div');
+    const group = document.createElement('div');
     group.className = `message-group ${role}`;
 
     const avatar = document.createElement('div');
     avatar.className = role === 'agent' ? 'assistant-avatar' : 'user-avatar';
-    
+
     // SVG Icons for avatars
     if (role === 'agent') {
       avatar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`;
@@ -602,7 +602,7 @@ class VoiceAssistant {
 
 
     this.conversationContainer.scrollTo({
-      top:      this.conversationContainer.scrollHeight,
+      top: this.conversationContainer.scrollHeight,
       behavior: 'smooth'
     });
   }
@@ -611,27 +611,35 @@ class VoiceAssistant {
     if (this.statusText) this.statusText.textContent = text;
     if (!this.statusDot) return;
     this.statusDot.className = 'status-dot';
-    if (state === 'active')                        this.statusDot.classList.add('active');
+    if (state === 'active') this.statusDot.classList.add('active');
     if (state === 'listening' || state === 'loading') this.statusDot.classList.add('listening');
   }
 
   speakText(text) {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const utt   = new SpeechSynthesisUtterance(text);
-    utt.rate    = 1.0;
-    utt.pitch   = 1.0;
-    utt.volume  = 1.0;
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1.0;
+    utt.pitch = 1.0;
+    utt.volume = 1.0;
     const voices = window.speechSynthesis.getVoices();
-    const female = voices.find(v =>
-      v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Victoria')
+    // Prioritize US English female voices
+    const usFemale = voices.find(v =>
+      (v.lang === 'en-US' || v.lang === 'en_US') &&
+      (v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Google US English'))
     );
-    if (female) utt.voice = female;
+    if (usFemale) utt.voice = usFemale;
+    else {
+      const female = voices.find(v =>
+        v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Victoria')
+      );
+      if (female) utt.voice = female;
+    }
     window.speechSynthesis.speak(utt);
   }
 }
 
-// ── HERO LOAD ANIMATION ───────────────────────────────────────
+//  HERO LOAD ANIMATION ─
 function initHeroReveal() {
   window.addEventListener('load', () => {
     const heroEls = document.querySelectorAll('.hero .reveal-up, .hero .reveal-right');
@@ -641,7 +649,7 @@ function initHeroReveal() {
   });
 }
 
-// ── INIT ──────────────────────────────────────────────────────
+//  INIT 
 document.addEventListener('DOMContentLoaded', () => {
   // Load speech voices
   if ('speechSynthesis' in window) {

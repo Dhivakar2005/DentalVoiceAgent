@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smile Dental | Sign In</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@300;400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@300;400;700;800&family=Pacifico&display=swap"
+        rel="stylesheet">
     <style>
         :root {
-            --accent: #f5d142;     /* Vibrant Editorial Yellow */
+            --accent: #f5d142;
+            /* Vibrant Editorial Yellow */
             --bg: #080808;
             --bg2: #0d0d0d;
             --border: rgba(255, 255, 255, 0.08);
@@ -19,7 +23,11 @@
             --transition: 0.5s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'Nunito', sans-serif;
@@ -34,10 +42,11 @@
             cursor: none;
         }
 
-        /* ── CURSOR ── */
+        /*  CURSOR  */
         #cursor {
             position: fixed;
-            width: 10px; height: 10px;
+            width: 10px;
+            height: 10px;
             background: var(--accent);
             border-radius: 50%;
             pointer-events: none;
@@ -47,9 +56,11 @@
             mix-blend-mode: exclusion;
             box-shadow: 0 0 15px rgba(245, 209, 66, 0.3);
         }
+
         #cursorTrail {
             position: fixed;
-            width: 50px; height: 50px;
+            width: 50px;
+            height: 50px;
             background: transparent;
             border: 2px solid var(--accent);
             border-radius: 50%;
@@ -65,9 +76,11 @@
         body::before {
             content: '';
             position: absolute;
-            width: 600px; height: 600px;
+            width: 600px;
+            height: 600px;
             background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
-            top: -200px; right: -200px;
+            top: -200px;
+            right: -200px;
             pointer-events: none;
         }
 
@@ -83,15 +96,18 @@
             text-align: center;
             margin-bottom: 40px;
         }
+
         .brand svg {
             color: var(--accent);
             margin-bottom: 16px;
         }
+
         .brand h1 {
             font-family: 'Pacifico', cursive;
             font-size: 2rem;
             letter-spacing: -0.02em;
         }
+
         .brand h1 em {
             color: var(--accent);
             font-style: normal;
@@ -104,14 +120,17 @@
             border: 1px solid var(--border);
             padding: 64px 48px;
             border-radius: 4px;
-            box-shadow: 0 40px 100px rgba(0,0,0,0.4);
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
             position: relative;
             overflow: hidden;
         }
+
         .auth-card::before {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0;
+            top: 0;
+            left: 0;
+            right: 0;
             height: 1px;
             background: linear-gradient(90deg, transparent, var(--accent), transparent);
             opacity: 0.4;
@@ -123,6 +142,7 @@
             margin-bottom: 40px;
             border-bottom: 1px solid var(--border);
         }
+
         .tab {
             padding-bottom: 12px;
             font-family: 'Righteous', cursive;
@@ -134,13 +154,17 @@
             transition: all var(--transition);
             position: relative;
         }
+
         .tab.active {
             color: var(--accent);
         }
+
         .tab.active::after {
             content: '';
             position: absolute;
-            bottom: -1px; left: 0; right: 0;
+            bottom: -1px;
+            left: 0;
+            right: 0;
             height: 2px;
             background: var(--accent);
         }
@@ -148,6 +172,7 @@
         .form-group {
             margin-bottom: 24px;
         }
+
         .form-group label {
             display: block;
             font-size: 0.7rem;
@@ -157,6 +182,7 @@
             color: var(--white-dim);
             margin-bottom: 8px;
         }
+
         .form-group input {
             width: 100%;
             background: rgba(255, 255, 255, 0.03);
@@ -169,14 +195,16 @@
             outline: none;
             transition: all var(--transition);
         }
+
         .form-group input:focus {
             border-color: var(--accent);
             background: rgba(255, 255, 255, 0.05);
             box-shadow: 0 0 20px rgba(245, 209, 66, 0.05);
         }
+
         /* Fix Chrome autofill blue */
         input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:hover,
         input:-webkit-autofill:focus {
             -webkit-text-fill-color: var(--white);
             -webkit-box-shadow: 0 0 0px 1000px #0a0a0a inset;
@@ -198,6 +226,7 @@
             transition: all var(--transition);
             margin-top: 20px;
         }
+
         .btn-submit:hover {
             background: var(--white);
             transform: translateY(-2px);
@@ -210,20 +239,30 @@
             text-align: center;
             min-height: 20px;
         }
-        .msg-error { color: #ff4d4d; }
-        .msg-success { color: var(--accent); }
 
-        .hidden { display: none; }
+        .msg-error {
+            color: #ff4d4d;
+        }
+
+        .msg-success {
+            color: var(--accent);
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
+
 <body>
     <div id="cursor"></div>
     <div id="cursorTrail"></div>
 
     <div class="auth-container">
         <div class="brand">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2v20M2 12h20M7 7l10 10M7 17L17 7"/>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M2 12h20M7 7l10 10M7 17L17 7" />
             </svg>
             <h1>Smile <em>Dental</em></h1>
         </div>
@@ -288,7 +327,7 @@
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             messageDiv.innerHTML = 'Validating credentials...';
-            
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const name = document.getElementById('name').value;
@@ -326,7 +365,7 @@
             }
         });
 
-        // ── CURSOR LOGIC ──────────────────────────────────────
+        //  CURSOR LOGIC 
         const cursor = document.getElementById('cursor');
         const trail = document.getElementById('cursorTrail');
         let mouseX = 0, mouseY = 0;
@@ -336,14 +375,14 @@
             mouseX = e.clientX;
             mouseY = e.clientY;
             cursor.style.left = mouseX + 'px';
-            cursor.style.top  = mouseY + 'px';
+            cursor.style.top = mouseY + 'px';
         });
 
         const tick = () => {
             trailX += (mouseX - trailX) * 0.15;
             trailY += (mouseY - trailY) * 0.15;
             trail.style.left = trailX + 'px';
-            trail.style.top  = trailY + 'px';
+            trail.style.top = trailY + 'px';
             requestAnimationFrame(tick);
         };
         tick();
@@ -362,4 +401,5 @@
         });
     </script>
 </body>
+
 </html>

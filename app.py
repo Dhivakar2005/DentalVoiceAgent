@@ -3,6 +3,7 @@ import pickle
 import re
 import json
 import time
+from typing import Any
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import numpy as np
@@ -35,9 +36,9 @@ try:
 except ImportError:
     SPEECH_RECOGNITION_AVAILABLE = False
 
-# ── CONFIG 
+#  CONFIG 
 OLLAMA_BASE_URL          = "http://localhost:11434"
-OLLAMA_MODEL             = "qwen2.5-coder:3b"
+OLLAMA_MODEL             = "qwen3.5:0.8b"
 SCOPES = [
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/spreadsheets",
@@ -50,147 +51,26 @@ LLM_TIMEOUT_SECONDS      = 8
 LLM_NUM_CTX              = 512
 LLM_NUM_PREDICT          = 80
 
-# ── FAQ KNOWLEDGE BASE ────────────────────────────────────────────────────────
-FAQ_DATABASE = {
-    "hours": {
-        "keywords": ["hours", "open", "close", "timing", "when open", "what time", "operating hours", "work time", "working hours"],
-        "answer": "We are open Monday to Saturday, 9 AM to 5 PM. We are closed on Sundays."
-    },
-    "booking_methods": {
-        "keywords": ["how to book", "how do i book", "book appointment", "make appointment", "schedule appointment", "booking process", "how can i book"],
-        "answer": "You can book by calling our voice assistant, using our website chat, or calling us directly."
-    },
-    "customer_id_info": {
-        "keywords": ["what is customer id", "why need id", "is id required", "do i need patient id", "what is patient id", "what is my id"],
-        "answer": "Your Customer ID (format CUST001) helps us access your records instantly. New patients receive one after their first appointment."
-    },
-    "booking_window": {
-        "keywords": ["how far", "advance", "how many days", "book ahead", "future appointment", "days in advance"],
-        "answer": "You can book appointments up to 3 days in advance from today."
-    },
-    "services": {
-        "keywords": ["service", "services", "what do you offer", "treatments", "procedures", "what can you do", "dental services", "what treatment"],
-        "answer": (
-            "We offer: General Dental Checkup, Tooth Filling, Root Canal Treatment, "
-            "Braces and Teeth Alignment, Gum Treatment and Scaling, Crowns Bridges and Dentures, "
-            "Tooth Extraction, Pediatric Dental Care, Dental X-rays, and Oral Disease Evaluation."
-        )
-    },
-    "appointment_duration": {
-        "keywords": ["how long", "duration", "appointment length", "how much time", "long is appointment"],
-        "answer": "Standard appointments are 10 minutes. Complex procedures may require a longer slot."
-    },
-    "reschedule_cancel_faq": {
-        "keywords": ["how to cancel", "how to reschedule", "cancellation procedure", "rescheduling procedure", "change appointment", "move appointment"],
-        "answer": "Just tell me your name, phone number, and current appointment date and time — I will handle the rest."
-    },
-    "booking_info": {
-        "keywords": ["what information", "what do i need", "what details", "required information", "need to provide"],
-        "answer": "New patients need name, phone, preferred date and time, and reason for visit. Existing patients need their Customer ID."
-    },
-    "forgot_id": {
-        "keywords": ["forgot id", "don't know id", "lost id", "forgot customer id", "don't have id"],
-        "answer": "No problem! Give me your name and phone number and I will look up your records."
-    },
-    "late_cancellation": {
-        "keywords": ["penalty", "late cancel", "cancellation fee", "charge cancel", "cancel late"],
-        "answer": "No penalty, but we appreciate at least 24 hours notice so the slot can go to another patient."
-    },
-    "pediatric": {
-        "keywords": ["pediatric", "child", "children", "kids", "baby teeth", "child dentist", "kid dentist", "paediatric"],
-        "answer": "Yes! We have a pediatric specialist for child-friendly treatments."
-    },
-    "xray_records": {
-        "keywords": ["x-ray", "xray", "x ray", "records", "dental records", "get my records", "medical records"],
-        "answer": "Yes, you can request copies of your X-ray records and dental history. Ask via the assistant or contact us directly."
-    },
-    "doctors_staff": {
-        "keywords": ["doctors", "dentist", "staff", "who works", "specialist", "team", "professionals"],
-        "answer": "Our clinic has experienced general dentists, a pediatric specialist, and orthodontic professionals — all licensed."
-    },
-    "insurance": {
-        "keywords": ["insurance", "coverage", "accept insurance", "dental plan", "health plan"],
-        "answer": "We accept most major dental insurance plans. Bring your insurance card to verify coverage."
-    },
-    "location_parking": {
-        "keywords": ["location", "address", "where are you", "directions", "parking", "how to get here"],
-        "answer": "Please visit our website or call us for our address. Parking is available near the clinic."
-    },
-    "emergency": {
-        "keywords": ["emergency", "urgent", "toothache", "broken tooth", "dental emergency", "severe pain"],
-        "answer": "For dental emergencies, call us immediately. We do our best to accommodate urgent cases quickly."
-    },
-    "cost_fees": {
-        "keywords": ["cost", "price", "fee", "how much", "charges", "payment", "expensive"],
-        "answer": "Treatment costs vary by procedure. Visit us for a consultation and we will give you a detailed estimate."
-    },
-    "checkup_frequency": {
-        "keywords": ["how often", "frequency", "when should i come", "regular checkup", "routine check"],
-        "answer": "Visit every 6 months for a routine check-up and cleaning, even if you have no pain."
-    },
-    "treatment_pain": {
-        "keywords": ["painful", "going to hurt", "hurt", "pain during", "scared of pain", "anesthesia"],
-        "answer": "Most modern dental treatments are nearly painless thanks to local anesthesia and advanced techniques."
-    },
-    "bleeding_gums": {
-        "keywords": ["bleeding gums", "blood when brushing", "gingivitis", "gum disease", "gums bleed"],
-        "answer": "Bleeding gums may indicate gingivitis. A check-up and cleaning can help significantly."
-    },
-    "brushing_time": {
-        "keywords": ["how long brush", "brushing time", "how to brush", "minutes to brush"],
-        "answer": "Brush for at least 2 minutes twice daily with a soft-bristled toothbrush and fluoride toothpaste."
-    },
-    "tooth_decay": {
-        "keywords": ["tooth decay", "cavity", "cavities", "causes decay", "enamel"],
-        "answer": "Tooth decay happens when bacteria produce acids from sugar, damaging the tooth enamel."
-    },
-    "flossing": {
-        "keywords": ["floss", "flossing", "clean between teeth"],
-        "answer": "Yes — flossing removes food and plaque between teeth where a toothbrush cannot reach."
-    },
-    "tooth_pain_advice": {
-        "keywords": ["tooth pain", "my tooth hurts", "what to do pain", "swollen tooth", "home remedy"],
-        "answer": "Rinse with warm water and see a dentist immediately. Avoid self-medication."
-    },
-    "xray_safety": {
-        "keywords": ["xray safe", "x-rays safe", "radiation", "are x-rays dangerous"],
-        "answer": "Yes — dental X-rays use very low radiation and are safe when taken only when necessary."
-    },
-    "bad_breath": {
-        "keywords": ["bad breath", "smelly breath", "halitosis", "mouth odor"],
-        "answer": "Brush twice daily, floss, clean your tongue, drink water, and get regular dental cleanings."
-    },
-    "good_foods": {
-        "keywords": ["good foods", "what to eat", "healthy food for teeth", "calcium", "diet"],
-        "answer": "Calcium-rich foods like milk, cheese, fruits, vegetables, and nuts help maintain strong teeth."
-    },
-}
+#  LOGIC LOADER 
+def load_logic():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(base_dir, "logic.json")
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[ERROR] Could not load logic.json: {e}")
+        return {}
 
-# ── FAST KEYWORD EXTRACTORS  (<1ms, no LLM) ──────────────────────────────────
+LOGIC = load_logic()
+FAQ_DATABASE = LOGIC.get("faq_database", {})
+_INTENT_PATTERNS = LOGIC.get("intent_patterns", {})
+PROMPTS = LOGIC.get("prompts", {})
+SYSTEM_MESSAGES = LOGIC.get("system_messages", {})
 
-_INTENT_PATTERNS = {
-    # More specific patterns first to avoid false matches
-    "reschedule": [
-        r'\b(reschedule|rescheduling|change|move|shift|update|modify)\b.{0,40}\bappointment\b',
-        r'\bappointment\b.{0,40}\b(change|move|reschedule|different\s*time|new\s*time)\b',
-    ],
-    "cancel": [
-        r'\b(cancel|cancell\w*|remove|delete)\b.{0,40}\bappointment\b',
-        r'\bappointment\b.{0,40}\b(cancel|remove|delete)\b',
-    ],
-    "view_appointments": [
-        r'\b(view|show|see|check|list)\b.{0,30}\bappointment',
-        r'\b(my|upcoming|scheduled)\b.{0,30}\bappointment',
-    ],
-    "book": [
-        r'\b(book|booking|schedule|scheduli\w*|make|set\s*up)\b.{0,40}\bappointment\b',
-        r'\bappointment\b.{0,40}\b(book|schedule|make|want|need)\b',
-        r'\b(see|visit|come\s*in|consult)\b.{0,30}\b(dentist|doctor|dental|clinic)\b',
-        r'\b(need|want|like|wish)\b.{0,30}\b(appointment|visit|checkup|check.up|consultation)\b',
-        r'\bi\s+(need|want)\b.{0,30}\b(appointment|dentist|dental|tooth|teeth)\b',
-        r'\b(book|schedule)\b',
-    ],
-}
+#  FAST KEYWORD EXTRACTORS  (<1ms, no LLM) 
+
+# _INTENT_PATTERNS removed (now in logic.json)
 
 
 def fast_extract_intent(text):
@@ -362,6 +242,8 @@ def fast_extract_date(text):
 
 def fast_extract_time(text):
     t = text.strip()
+    # Normalize "p.m." / "a.m." to "PM" / "AM"
+    t = re.sub(r'\b([ap])\.?m\.?\b', r'\1m', t, flags=re.IGNORECASE)
     tu = t.upper()
     m = re.search(r'\b(\d{1,2}):(\d{2})\s*([AP]M)\b', tu)
     if m: return f"{m.group(1)}:{m.group(2)} {m.group(3)}"
@@ -401,15 +283,15 @@ def fast_yes_no(text):
     return None
 
 
-# ── VOICE INTERFACE ───────────────────────────────────────────────────────────
+#  VOICE INTERFACE ─
 class VoiceInterface:
     def __init__(self, use_voice=True):
         self.use_voice = use_voice and (AUDIO_BACKEND is not None) and TTS_AVAILABLE
         if self.use_voice:
             self.engine = pyttsx3.init()
             voices = self.engine.getProperty('voices')
-            if len(voices) > 1:
-                self.engine.setProperty('voice', voices[1].id)
+            if len(voices) > 0:
+                self.engine.setProperty('voice', voices[0].id)
             self.engine.setProperty('rate', 150)
             self.engine.setProperty('volume', 1.0)
             if SPEECH_RECOGNITION_AVAILABLE:
@@ -458,7 +340,7 @@ class VoiceInterface:
         return input("\nPatient (type): ").strip()
 
 
-# ── GOOGLE CALENDAR ───────────────────────────────────────────────────────────
+#  GOOGLE CALENDAR ─
 class GoogleCalendarManager:
     def __init__(self):
         self.service = self._authenticate()
@@ -518,13 +400,15 @@ class GoogleCalendarManager:
         self.service.events().delete(calendarId="primary", eventId=event_id).execute()
 
 
-# ── DENTAL VOICE AGENT ────────────────────────────────────────────────────────
+#  DENTAL VOICE AGENT 
 class DentalVoiceAgent:
     def __init__(self, use_voice=True):
         self.calendar       = GoogleCalendarManager()
         self.sheets         = GoogleSheetsManager()
         self.voice          = VoiceInterface(use_voice=use_voice)
-        self.state          = {}
+        self.prompts        = PROMPTS
+        self.messages       = SYSTEM_MESSAGES
+        self.state: dict[str, Any] = {}
         self.awaiting_field = None
         self.reset_state()
 
@@ -545,7 +429,7 @@ class DentalVoiceAgent:
         }
         self.awaiting_field = None
 
-    # ── LLM — last resort only ────────────────────────────────────────────────
+    #  LLM — last resort only 
     def _call_llm(self, text):
         system = (
             'Dental appointment assistant. Extract from user input. '
@@ -601,7 +485,7 @@ class DentalVoiceAgent:
             print(f"[LLM] Error: {e}")
         return None
 
-    # ── STATE HELPERS ─────────────────────────────────────────────────────────
+    #  STATE HELPERS ─
     def _update(self, **kwargs):
         for k, v in kwargs.items():
             if v is not None and v != "":
@@ -634,48 +518,28 @@ class DentalVoiceAgent:
 
     def _prompt_for(self, field):
         intent = self.state.get("intent")
-        prompts = {
-        "patient_type":  "Are you a new or existing patient?",
-        "customer_id":   "Please tell me your customer ID, for example CUST001.",
-        "name":          "What is your full name?",
-        "phone":         "What is your phone number?",
-        "date": (
-            "What is the date of your existing appointment?"
-            if intent in ("reschedule", "cancel")
-            else "What date would you like? You can say tomorrow or give a specific date."
-        ),
-        "time": (
-            "What time is your existing appointment?"
-            if intent in ("reschedule", "cancel")
-            else "What time would you prefer? We are open 9 AM to 5 PM."
-        ),
-        "reason":    "What is the reason for your visit?",
-        "new_date":  "What is your preferred new date?",
-        "new_time":  "What is your preferred new time?",
-    }
-        return prompts.get(field, f"Please provide your {field}.") 
+        p = self.prompts.get(field, f"Please provide your {field}.")
+        if field == "date" and intent in ("reschedule", "cancel"):
+            return "What is the date of your existing appointment?"
+        if field == "time" and intent in ("reschedule", "cancel"):
+            return "What time is your existing appointment?"
+        return p
 
     def _confirm_prompt(self):
         s = self.state; i = s.get("intent", "")
         if i == "book":
-            # Pre-generate customer ID for new patients so it shows in confirmation
             if s.get("patient_type") == "new" and not s.get("customer_id"):
-                try:
-                    s["customer_id"] = self.sheets.generate_customer_id()
-                except Exception:
-                    s["customer_id"] = None
-            cid_note = f" Your new customer ID will be {s['customer_id']}." if s.get("patient_type") == "new" and s.get("customer_id") else ""
-            return (f"Just to confirm — booking for {s['name']} on {s['date']} "
-                    f"at {s['time']} for {s['reason']}.{cid_note} Say yes to confirm or no to change.")
+                try: s["customer_id"] = self.sheets.generate_customer_id()
+                except Exception: s["customer_id"] = None
+            msg = self.messages.get("confirm_booking")
+            return msg.format(name=s['name'], date=s['date'], time=s['time'], reason=s['reason'])
         if i == "reschedule":
-            return (f"Moving {s['name']}'s appointment from {s['date']} at {s['time']} "
-                    f"to {s['new_date']} at {s['new_time']}. Say yes or no.")
+            return f"Moving {s['name']}'s appointment from {s['date']} at {s['time']} to {s['new_date']} at {s['new_time']}. Say yes or no."
         if i == "cancel":
-            return (f"Cancelling {s['name']}'s appointment on {s['date']} at {s['time']}. "
-                    f"Say yes to confirm or no to cancel.")
+            return f"Cancelling {s['name']}'s appointment on {s['date']} at {s['time']}. Say yes to confirm or no to cancel."
         return "Shall I go ahead? Say yes to confirm or no to edit."
 
-    # ── FAST FIELD EXTRACTION ─────────────────────────────────────────────────
+    #  FAST FIELD EXTRACTION ─
     def _extract_fast(self, text):
         """
         Extract every possible field from text using fast regex only (<1ms).
@@ -750,10 +614,10 @@ class DentalVoiceAgent:
 
         return found
 
-    # ── MAIN RESPONSE GENERATOR ───────────────────────────────────────────────
+    #  MAIN RESPONSE GENERATOR ─
     def generate_response(self, text):
         try:
-            # ── 1. Confirmation fast-path (no LLM) ──────────────────────────
+            #  1. Confirmation fast-path (no LLM) 
             if self.state.get("workflow_state") == "WAITING_CONFIRMATION":
                 decision = fast_yes_no(text)
                 if decision == "yes":
@@ -764,7 +628,7 @@ class DentalVoiceAgent:
                     return "What would you like to change? You can say name, date, time, or reason."
                 return "Please say yes to confirm or no to make changes."
 
-            # ── 2. FAQ short-circuit (no LLM) ───────────────────────────────
+            #  2. FAQ short-circuit (no LLM) ─
             if self.awaiting_field != "customer_id":
                 t_lower = text.lower()
                 for faq in FAQ_DATABASE.values():
@@ -772,7 +636,7 @@ class DentalVoiceAgent:
                         if kw in t_lower:
                             return faq["answer"]
 
-            # ── 3. Fast extraction (no LLM) ──────────────────────────────────
+            #  3. Fast extraction (no LLM) 
             fast_found = self._extract_fast(text)
             print(f"[FAST] {fast_found}")
 
@@ -782,7 +646,7 @@ class DentalVoiceAgent:
             if self.awaiting_field and fast_found.get(self.awaiting_field):
                 self.awaiting_field = None
 
-            # ── 4. Decide if LLM is needed ───────────────────────────────────
+            #  4. Decide if LLM is needed ─
             already_in_flow  = bool(self.state.get("intent") or self.state.get("patient_type"))
             intent_resolved  = bool(self.state.get("intent"))
             need_llm = not intent_resolved and not already_in_flow and not fast_found.get("intent")
@@ -797,11 +661,11 @@ class DentalVoiceAgent:
                     if not self.state.get("intent"):
                         ga = llm_data.get("general_answer", "")
                         if ga: return ga
-                        return "I can help you book, reschedule, or cancel an appointment. What would you like to do?"
+                        return self.messages.get("help_options")
                 else:
-                    return "I can help you book, reschedule, or cancel an appointment. What would you like to do?"
+                    return self.messages.get("help_options")
 
-            # ── 5. Collect missing fields ────────────────────────────────────
+            #  5. Collect missing fields 
             missing = self._missing()
 
             if missing:
@@ -817,17 +681,18 @@ class DentalVoiceAgent:
                         missing2 = self._missing()
                         if missing2:
                             self.awaiting_field = missing2[0]
-                            return f"Welcome back, {c['name']}! {self._prompt_for(missing2[0])}"
+                            greeting = self.messages.get("welcome_back", "Welcome back, {name}! {next_prompt}")
+                            return greeting.format(name=c['name'], next_prompt=self._prompt_for(missing2[0]))
                         self.state["workflow_state"] = "WAITING_CONFIRMATION"
                         return self._confirm_prompt()
                     else:
                         self.state["customer_id"] = None
                         self.awaiting_field       = "patient_type"
-                        return "I couldn't find that ID. Are you a new patient, or please try a different ID?"
+                        return self.messages.get("id_not_found")
 
                 return self._prompt_for(f)
 
-            # ── 6. All fields ready → confirm ────────────────────────────────
+            #  6. All fields ready → confirm 
             if self.state["workflow_state"] != "COMPLETED":
                 self.state["workflow_state"] = "WAITING_CONFIRMATION"
                 return self._confirm_prompt()
@@ -838,7 +703,7 @@ class DentalVoiceAgent:
             import traceback
             print(f"[AGENT ERROR] {e}")
             traceback.print_exc()
-            return "I'm sorry, something went wrong. Could you please repeat that?"
+            return self.messages.get("unknown_error")
 
     def _execute(self):
         i = self.state.get("intent")
@@ -846,9 +711,9 @@ class DentalVoiceAgent:
         if i == "reschedule":        return self._reschedule()
         if i == "cancel":            return self._cancel()
         if i == "view_appointments": return self._view()
-        return "How else can I help you?"
+        return self.messages.get("how_else_help")
 
-    # ── DATETIME HELPER ───────────────────────────────────────────────────────
+    #  DATETIME HELPER ─
     def _parse_dt(self, date_str, time_str):
         if not date_str or not time_str:
             raise ValueError("Date or time is missing.")
@@ -862,18 +727,18 @@ class DentalVoiceAgent:
     def _is_biz_hours(self, dt):
         return dt.weekday() != 6 and 9 <= dt.hour < 17
 
-    # ── APPOINTMENT ACTIONS ───────────────────────────────────────────────────
+    #  APPOINTMENT ACTIONS 
     def _book(self):
         try: start = self._parse_dt(self.state.get("date"), self.state.get("time"))
         except ValueError as e: return str(e)
 
         if not self._is_biz_hours(start):
-            return "We are open Monday to Saturday, 9 AM to 5 PM. Please choose another slot."
+            return self.messages.get("closed_biz_hours")
 
         today = datetime.now(ZoneInfo(TIMEZONE)).date()
         days  = (start.date() - today).days
-        if days < 0:  return "That date is in the past. Please choose a future date."
-        if days > 3:  return "We only accept bookings up to 3 days in advance."
+        if days < 0:  return self.messages.get("past_date")
+        if days > 3:  return self.messages.get("advanced_booking_limit")
 
         try:
             cid = self.state.get("customer_id") or self.sheets.generate_customer_id()
@@ -889,22 +754,25 @@ class DentalVoiceAgent:
                 date_str = self.state["date"]
                 time_str = self.state["time"]
                 self.reset_state()
-                return (f"Your appointment is booked! Your customer ID is {cid}. "
-                        f"We will see you on {date_str} at {time_str}. Is there anything else?")
-            return "That time slot is already taken. Please choose a different time."
+                msg = self.messages.get("appointment_booked", "Your appointment is booked! Your customer ID is {cid}. We will see you on {date} at {time}. Is there anything else?")
+                return msg.format(cid=cid, date=date_str, time=time_str)
+            # Clear invalid slot so user can provide a new one
+            self.state["date"] = None
+            self.state["time"] = None
+            return self.messages.get("slot_taken")
         except Exception as e:
-            print(f"[BOOK ERROR] {e}"); return "Sorry, I could not complete the booking. Please try again."
+            print(f"[BOOK ERROR] {e}"); return self.messages.get("booking_error")
 
     def _reschedule(self):
         try: new_start = self._parse_dt(self.state.get("new_date"), self.state.get("new_time"))
         except ValueError as e: return str(e)
 
         if not self._is_biz_hours(new_start):
-            return "We are open Monday to Saturday, 9 AM to 5 PM. Please choose another slot."
+            return self.messages.get("closed_biz_hours")
 
         try:
             old = self.calendar.find_appointment(self.state["name"], self.state["phone"], self.state["date"])
-            if not old: return "I could not find your existing appointment. Please check the date."
+            if not old: return self.messages.get("appointment_not_found")
             self.calendar.cancel(old["id"])
             eid = self.calendar.create_appointment(
                 self.state["name"], self.state["phone"], new_start,
@@ -918,7 +786,8 @@ class DentalVoiceAgent:
                 )
                 nd, nt = self.state["new_date"], self.state["new_time"]
                 self.reset_state()
-                return f"Rescheduled! Your new appointment is on {nd} at {nt}. Anything else?"
+                msg = self.messages.get("appointment_rescheduled", "Rescheduled! Your new appointment is on {date} at {time}. Anything else?")
+                return msg.format(date=nd, time=nt)
             # Restore original if new slot taken
             try:
                 orig = self._parse_dt(self.state["date"], self.state["time"])
@@ -927,43 +796,48 @@ class DentalVoiceAgent:
                     self.state.get("reason",""), self.state.get("customer_id")
                 )
             except Exception: pass
-            return "That new slot is already taken. Your original appointment has been kept."
+            # Clear failed new slot
+            self.state["new_date"] = None
+            self.state["new_time"] = None
+            return self.messages.get("slot_taken")
         except Exception as e:
-            print(f"[RESCHEDULE ERROR] {e}"); return "Sorry, I could not reschedule. Please try again."
+            print(f"[RESCHEDULE ERROR] {e}"); return self.messages.get("reschedule_error")
 
     def _cancel(self):
         try:
             event = self.calendar.find_appointment(self.state["name"], self.state["phone"], self.state["date"])
-            if not event: return "I could not find your appointment. Please check the date."
+            if not event: return self.messages.get("appointment_not_found")
             self.calendar.cancel(event["id"])
             self.sheets.delete_appointment(self.state.get("customer_id"), self.state["date"], self.state["time"])
             d = self.state["date"]
             self.reset_state()
-            return f"Your appointment on {d} has been cancelled. Is there anything else?"
+            msg = self.messages.get("appointment_cancelled", "Your appointment on {date} has been cancelled. Is there anything else?")
+            return msg.format(date=d)
         except Exception as e:
-            print(f"[CANCEL ERROR] {e}"); return "Sorry, I could not cancel. Please try again."
+            print(f"[CANCEL ERROR] {e}"); return self.messages.get("cancel_error")
 
     def _view(self):
         cid = self.state.get("customer_id")
-        if not cid: return "I need your customer ID to look up appointments."
+        if not cid: return self.prompts.get("customer_id")
         try:
             appts = self.sheets.get_appointments_by_id(cid)
-            if not appts: return "No upcoming appointments found for your account."
+            if not appts: return self.messages.get("no_appointments")
             lines = [f"{a['appointment_date']} at {a['appointment_time']}" for a in appts]
             self.reset_state()
-            return "Your upcoming appointments: " + ", and ".join(lines) + ". Anything else?"
+            msg = self.messages.get("view_appointments", "Your upcoming appointments: {lines}. Anything else?")
+            return msg.format(lines=", and ".join(lines))
         except Exception as e:
-            print(f"[VIEW ERROR] {e}"); return "Sorry, I could not retrieve your appointments."
+            print(f"[VIEW ERROR] {e}"); return self.messages.get("view_error")
 
-    # ── MAIN LOOP ─────────────────────────────────────────────────────────────
+    #  MAIN LOOP ─
     def run(self):
-        self.voice.speak("Hello! Welcome to Smile Dental. How can I help you today?")
+        self.voice.speak(self.messages.get("welcome"))
         while True:
             text = self.voice.listen()
             if not text or text in ("exit", "quit"):
-                self.voice.speak("Goodbye! Have a great day."); break
+                self.voice.speak(self.messages.get("goodbye")); break
             if text in ("unknown", "error"):
-                self.voice.speak("Sorry, I didn't catch that. Could you please repeat?"); continue
+                self.voice.speak(self.messages.get("did_not_catch")); continue
             self.voice.speak(self.generate_response(text))
 
 

@@ -54,6 +54,7 @@ Thumbs.db
 credentials.json
 token.pickle
 sheets_config.json
+offline_appointments.json
 .env
 FAQ.txt
 __init__.py
@@ -68,7 +69,6 @@ error_log.txt
 *.log
 test_twilio_call.py
 t.py
-check_app.py
 *.bak
 *.tmp
 *.temp

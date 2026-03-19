@@ -12,30 +12,37 @@ The platform has been rebuilt with a focus on **visual excellence** and **emotio
 
 ## ✨ Key Features
 
-### 🤖 **Next-Gen AI Assistant**
+### 🤖 Next-Gen AI Assistant
 The chatbot has been redesigned from the ground up to feel like a premium concierge.
 -   **Conversational Alignment**: Smart left/right message grouping with animated entry.
--   **Aura Interaction**: A custom custom cursor that syncs with the assistant's state.
--   **100% SVG Iconography**: No generic emojis; every action is represented by a precise, sharp line icon.
+-   **Aura Interaction**: A custom cursor that syncs with the assistant's state.
+-   **Hybrid Intent Engine**: Combines fast regex-based extraction (<1ms) with LLM fallback for high reliability and speed.
 
-### 📅 **Smart Scheduling Engine**
+### 📅 Smart Scheduling Engine
 -   **Predictive Booking**: Natural language processing for instant appointment extraction.
 -   **Real-Time Sync**: Instant two-way synchronization with Google Calendar and Sheets.
 -   **Conflict Resolution**: Automated checking of clinic hours and existing schedule densities.
+-   **Sheet-as-DB**: Advanced customer management via Google Sheets with **Offline Sync** capabilities.
 
-### 🖼️ **Pantone Swatch Team Cards**
-Our team section uses a signature "Pantone Swatch" layout with a **Cinematic Wide (21:9)** aspect ratio, blending professional photography with editorial product-style presentation.
+### 📊 Admin Dashboard
+A secure, real-time dashboard for clinic management:
+-   **Appointment Overview**: View all upcoming bookings synced directly from Google Sheets.
+-   **Calendar Feed**: Real-time list of events from the clinic's primary Google Calendar.
+-   **User Management**: Secure login and role-based access for staff.
 
-## 📞 Telephony Support (Twilio)
-Smile Dental isn’t just a website; it’s a phone-ready agent. Call the clinic's Twilio-enabled number to parlé directly with the AI receptionist. It handles the same logic, calendar sync, and sheet updates as the web interface.
+### 📞 Telephony Support (Twilio)
+Smile Dental is a phone-ready agent. Call the clinic's Twilio-enabled number to interact with the AI receptionist.
+-   **Natural Conversation**: Uses VAD (Voice Activity Detection) for seamless turn-taking.
+-   **Indian English Support**: Optimized for regional accents (`en-IN`) with high-fidelity TTS (Polly Joanna).
+-   **Enhanced STT**: Hardware-accelerated speech-to-text for near-zero latency.
 
 ## 🔧 Technical Stack
 -   **Backend**: Flask / Python 3.12
--   **AI Engine**: Ollama (qwen2.5-coder:3b) 
+-   **AI Engine**: Ollama (qwen3.5:0.8b)
+-   **Database**: MongoDB (User Auth), Google Sheets (Customer Records)
 -   **Communication**: Twilio Voice API, TwiML, Ngrok
 -   **Infrastructure**: Google Sheets API (v4), Google Calendar API (v3)
--   **Frontend**: Hardware-accelerated CSS3 (Grid/Flex), Vanilla JS, RequestAnimationFrame Motion.
--   **Typography**: Google Fonts Inter, Cormorant Garamond, DM Mono.
+-   **Frontend**: Hardware-accelerated CSS3, Vanilla JS, RequestAnimationFrame Motion.
 
 ## 🚀 Installation & Local Development
 
@@ -47,11 +54,14 @@ Smile Dental isn’t just a website; it’s a phone-ready agent. Call the clinic
 2.  **Model Setup**
     ```bash
     ollama serve
-    ollama pull qwen2.5-coder:3b
+    ollama pull qwen3.5:0.8b
     ```
 3.  **Secrets Management**
     -   Place `credentials.json` (Google Cloud) in the root.
-    -   Configure your `.env` for MongoDB/Twilio credentials.
+    -   Configure your `.env` or environment variables:
+        - `FLASK_SECRET_KEY`: Secure key for session management.
+        - `MONGO_URI`: MongoDB connection string.
+        - `TWILIO_AUTH_TOKEN`: For webhook signature validation.
 4.  **Launch**
     ```bash
     python server.py
@@ -60,14 +70,16 @@ Smile Dental isn’t just a website; it’s a phone-ready agent. Call the clinic
 ## 🏗️ Project Architecture
 ```
 Dental/
-├── app.py                      # Core AI Concierge Logic
-├── server.py                   # High-Performance Flask Backend
-├── google_sheets_manager.py    # Sheet-as-DB Persistence
-├── templates/                  # Modern Editorial Templates
-├── static/                     
-│   ├── css/style.css           # Design Tokens & Motion Logic
-│   └── js/app.js               # Reactive Frontend Controllers
-└── .gitignore                  # Optimized Environment Rules
+├ app.py                      # Core AI Concierge & Logic Loader
+├ server.py                   # High-Performance Flask Backend (Web & Twilio)
+├ google_sheets_manager.py    # Sheet-as-DB Persistence & Offline Sync
+├ database_manager.py         # MongoDB User Authentication
+├ logic.json                  # FAQ Database & Intent Patterns
+├ templates/                  # Modern Editorial Templates
+├ static/                     
+│   ├ css/style.css           # Design Tokens & Motion Logic
+│   └ js/app.js               # Reactive Frontend Controllers
+└ .gitignore                  # Optimized Environment Rules
 ```
 
 ---

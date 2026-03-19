@@ -16,10 +16,9 @@ from twilio.request_validator import RequestValidator
 from app import DentalVoiceAgent, VoiceInterface, OLLAMA_BASE_URL, OLLAMA_MODEL
 from database_manager import DatabaseManager
 
-# ── APP SETUP ─────────────────────────────────────────────────────────────────
+#  APP SETUP 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
-# FIX: use a stable secret key from environment — os.urandom regenerates on
 # every restart and logs out all users.
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-me-in-production-use-env-var")
 
@@ -31,8 +30,7 @@ TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
 # Session TTL in seconds — inactive sessions are cleaned up automatically
 SESSION_TTL = 600   # 10 minutes
 
-# ── SHARED SINGLETONS ─────────────────────────────────────────────────────────
-# FIX: create one agent at startup for admin data reuse — avoids a full
+#  SHARED SINGLETONS 
 # GoogleCalendarManager + OAuth build on every admin dashboard refresh.
 _admin_agent = None
 _admin_agent_lock = threading.Lock()
@@ -321,7 +319,7 @@ def get_history():
         "state":   agent.agent.state
     })
 
-# ── TWILIO VOICE WEBHOOK ──────────────────────────────────────────────────────
+#  TWILIO VOICE WEBHOOK 
 def validate_twilio_request(f):
     """
     Decorator: verify that incoming requests are genuinely from Twilio.
@@ -365,14 +363,14 @@ def twilio_voice():
     resp          = VoiceResponse()
 
     try:
-        # ── New call ──────────────────────────────────────────────────────────
+        #  New call 
         if call_sid not in sessions:
             print(f"[CALL] New call: {call_sid}")
             with sessions_lock:
                 sessions[call_sid] = WebVoiceAgent(call_sid)
             response_text = "Hello! Welcome to Smile Dental. How can I help you today?"
 
-        # ── Existing call with speech input ──────────────────────────────────
+        #  Existing call with speech input 
         elif speech_result:
             print(f"[USER] ({call_sid}): {speech_result}")
             with sessions_lock:
@@ -384,21 +382,16 @@ def twilio_voice():
                 response_text = "I'm sorry, your session expired. Please call again."
             print(f"[AGENT]: {response_text}")
 
-        # ── Redirect / silence / empty input ─────────────────────────────────
+        #  Redirect / silence / empty input 
         else:
             response_text = "I didn't catch that — could you please repeat?"
 
-        # ── Sanitize for TTS ──────────────────────────────────────────────────
+        #  Sanitize for TTS 
         tts_text = str(response_text).replace("*", "").replace("\n", ". ").strip()
         if not tts_text:
             tts_text = "I'm sorry, something went wrong. Please try again."
 
-        # ── Build TwiML — single Gather, no redirect ─────────────────────────
-        # FIX: speechTimeout='auto' + speechModel + enhanced + language
-        #      removes the fixed 1-second silence wait and uses Twilio's VAD
-        #      for near-instant end-of-speech detection.
-        # FIX: removed resp.redirect() — eliminates an unnecessary round trip
-        #      (the action= URL on Gather already handles routing).
+        #  Build TwiML — single Gather, no redirect 
         gather = resp.gather(
             input             = 'speech',
             action            = '/twilio/voice',
@@ -410,7 +403,8 @@ def twilio_voice():
             timeout           = 5,            # seconds to wait for user to START
             actionOnEmptyResult = True        # fire webhook even on silence
         )
-        gather.say(tts_text, voice='Polly.Aditi', language='en-IN')
+        ssml_text = f'<speak><prosody rate="115%">{tts_text}</prosody></speak>'
+        gather.say(ssml_text, voice='Polly.Joanna', language='en-US')
         # No resp.redirect() here — removes one unnecessary HTTP round trip
 
         return str(resp)
@@ -430,7 +424,7 @@ def twilio_voice():
         error_resp.say("I'm sorry, a system error occurred. Please call back in a moment.")
         return str(error_resp)
 
-# ── ENTRY POINT ───────────────────────────────────────────────────────────────
+#  ENTRY POINT 
 if __name__ == '__main__':
     print("=" * 60)
     print("SMILE DENTAL - Web Server")

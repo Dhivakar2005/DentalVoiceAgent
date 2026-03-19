@@ -2,7 +2,7 @@
    SMILE DENTAL — GLASSMORPHIC GREEN EDITION
    ═══════════════════════════════════════════════ */
 
-/* ── VARIABLES ── */
+/*  VARIABLES  */
 :root {
   --accent: #f5d142;
   /* Vibrant Editorial Yellow */
@@ -35,7 +35,7 @@
   /* Faster, snappy transition */
 }
 
-/* ── RESET ── */
+/*  RESET  */
 *,
 *::before,
 *::after {
@@ -73,7 +73,7 @@ img {
   display: block;
 }
 
-/* ── CURSOR ── */
+/*  CURSOR  */
 #cursor {
   position: fixed;
   width: 10px;
@@ -153,7 +153,7 @@ body:hover #cursor {
   opacity: 0.6;
 }
 
-/* ── GLASS CARD ── */
+/*  GLASS CARD  */
 .glass-card {
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(40px) saturate(120%);
@@ -176,7 +176,7 @@ body:hover #cursor {
   opacity: 0.2;
 }
 
-/* ── NAVBAR ── */
+/*  NAVBAR  */
 .navbar {
   position: fixed;
   top: 0;
@@ -386,7 +386,7 @@ body:hover #cursor {
   background: rgba(255, 77, 77, 0.08);
 }
 
-/* ── CTA BUTTONS ── */
+/*  CTA BUTTONS  */
 .cta-primary {
   display: inline-flex;
   align-items: center;
@@ -451,7 +451,7 @@ body:hover #cursor {
   box-shadow: 0 0 20px var(--accent-faint);
 }
 
-/* ── SECTION GLOBALS ── */
+/*  SECTION GLOBALS  */
 .section-h2 {
   font-family: var(--font-display);
   font-size: clamp(2.4rem, 5vw, 4rem);
@@ -473,7 +473,7 @@ body:hover #cursor {
   letter-spacing: 0.06em;
 }
 
-/* ── HERO ── */
+/*  HERO  */
 .hero {
   min-height: 100vh;
   display: flex;
@@ -699,7 +699,7 @@ body:hover #cursor {
   }
 }
 
-/* ── TICKER ── */
+/*  TICKER  */
 .ticker-wrap {
   overflow: hidden;
   background: var(--glass-bg);
@@ -736,7 +736,7 @@ body:hover #cursor {
   }
 }
 
-/* ── ABOUT ── */
+/*  ABOUT  */
 .about-section {
   display: flex;
   align-items: center;
@@ -863,7 +863,7 @@ body:hover #cursor {
   animation: spin 12s linear infinite;
 }
 
-/* ── SERVICES ── */
+/*  SERVICES  */
 .services-section {
   padding: 40px 5vw;
   /* Reduced from 100px */
@@ -951,7 +951,7 @@ body:hover #cursor {
   transform: translateX(8px);
 }
 
-/* ── QUOTE ── */
+/*  QUOTE  */
 .quote-section {
   padding: 40px 5vw;
   /* Reduced from 80px */
@@ -996,14 +996,14 @@ body:hover #cursor {
   z-index: 1;
 }
 
-/* ── PROCESS ── */
+/*  PROCESS  */
 .process-section {
   padding: 60px 5vw;
   /* Reduced from 100px */
   position: relative;
 }
 
-/* ── PROCESS ── */
+/*  PROCESS  */
 .process-section {
   padding: 60px 5vw;
   background: var(--bg);
@@ -1068,7 +1068,7 @@ body:hover #cursor {
   line-height: 1.6;
 }
 
-/* ── QUOTE ── */
+/*  QUOTE  */
 .quote-section {
   padding: 80px 5vw;
   background: var(--bg2);
@@ -1114,7 +1114,7 @@ body:hover #cursor {
   z-index: 1;
 }
 
-/* ── TEAM ── */
+/*  TEAM  */
 .team-section {
   padding: 40px 5vw;
   /* Reduced for single-screen view */
@@ -1245,7 +1245,7 @@ body:hover #cursor {
   opacity: 0.3;
 }
 
-/* ── CTA BANNER ── */
+/*  CTA BANNER  */
 .cta-banner {
   padding: 80px 5vw;
   /* Reduced from 140px */
@@ -1286,7 +1286,7 @@ body:hover #cursor {
   margin-bottom: 40px;
 }
 
-/* ── FOOTER ── */
+/*  FOOTER  */
 .footer {
   background: var(--bg2);
   border-top: 1px solid var(--glass-border);
@@ -1308,7 +1308,7 @@ body:hover #cursor {
   line-height: 1.7;
 }
 
-/* ── AI ASSISTANT FAB ── */
+/*  AI ASSISTANT FAB  */
 .ai-fab {
   position: fixed;
   bottom: 30px;
@@ -1341,16 +1341,23 @@ body:hover #cursor {
 }
 
 @keyframes fabPing {
-  0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(1.4); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
 }
 
 .fab-icon {
   color: var(--bg);
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
-/* ── CHAT INTERFACE ── */
+/*  CHAT INTERFACE  */
 .booking-modal {
   position: fixed;
   inset: 0;
@@ -1380,7 +1387,7 @@ body:hover #cursor {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6);
   transform: translateY(30px) scale(0.98);
   transition: all 0.6s var(--ease);
 }
@@ -1395,7 +1402,7 @@ body:hover #cursor {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .modal-header h2 {
@@ -1419,14 +1426,21 @@ body:hover #cursor {
   max-width: 85%;
 }
 
-.message-group.agent { align-self: flex-start; }
-.message-group.user { align-self: flex-end; flex-direction: row-reverse; }
+.message-group.agent {
+  align-self: flex-start;
+}
 
-.assistant-avatar, .user-avatar {
+.message-group.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.assistant-avatar,
+.user-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1456,7 +1470,7 @@ body:hover #cursor {
 
 .chat-input-area {
   padding: 20px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
   border-top: 1px solid var(--border);
   display: flex;
   gap: 12px;
@@ -1465,7 +1479,7 @@ body:hover #cursor {
 
 .chat-input-area input {
   flex: 1;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 16px;
@@ -1475,9 +1489,12 @@ body:hover #cursor {
   transition: border-color 0.3s;
 }
 
-.chat-input-area input:focus { border-color: var(--accent); }
+.chat-input-area input:focus {
+  border-color: var(--accent);
+}
 
-.voice-btn, .send-btn {
+.voice-btn,
+.send-btn {
   background: none;
   border: none;
   color: var(--white-dim);
@@ -1497,7 +1514,10 @@ body:hover #cursor {
   gap: 6px;
 }
 
-.send-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-glow); }
+.send-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
 
 .footer-socials {
   display: flex;
@@ -1564,7 +1584,7 @@ body:hover #cursor {
   color: var(--white-faint);
 }
 
-/* ── AI MODAL ── */
+/*  AI MODAL  */
 .ai-modal {
   position: fixed;
   inset: 0;
@@ -1694,7 +1714,7 @@ body:hover #cursor {
   border-radius: 4px;
 }
 
-/* ── MESSAGES ── */
+/*  MESSAGES  */
 .message-group {
   display: flex;
   flex-direction: column;
@@ -1835,7 +1855,7 @@ body:hover #cursor {
   color: var(--accent);
 }
 
-/* ── FAB ── */
+/*  FAB  */
 .ai-fab {
   position: fixed;
   bottom: 40px;
@@ -1883,7 +1903,7 @@ body:hover #cursor {
   }
 }
 
-/* ── BACK TO TOP ── */
+/*  BACK TO TOP  */
 .back-to-top {
   position: fixed;
   bottom: 40px;
@@ -1919,7 +1939,7 @@ body:hover #cursor {
   box-shadow: 0 0 30px var(--accent-glow);
 }
 
-/* ── REVEAL ANIMATIONS ── */
+/*  REVEAL ANIMATIONS  */
 .reveal-up {
   opacity: 0;
   transform: translateY(48px);
@@ -1962,8 +1982,8 @@ body:hover #cursor {
   transition-delay: 0.5s !important;
 }
 
-/* ── RESPONSIVE ── */
-/* ── CINEMATIC TRANSITION ── */
+/*  RESPONSIVE  */
+/*  CINEMATIC TRANSITION  */
 .scroll-transition {
   position: fixed;
   inset: 0;
