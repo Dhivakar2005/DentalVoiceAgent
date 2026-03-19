@@ -1,14 +1,6 @@
 # 🦷 Smile Dental - AI-Powered Dental Assistant Platform
-![Full Website UI](https://i.ibb.co/example/ui.png)
 
-A high-end, cinematic dental appointment platform that merges **Dark Luxury Editorial** aesthetics with advanced AI capabilities. Smile Dental redefines the clinical experience through a sophisticated glassmorphic interface, effortless motion, and a real-time AI assistant.
-
-## ✦ Design Philosophy: "The Modern Editorial"
-The platform has been rebuilt with a focus on **visual excellence** and **emotional resonance**:
--   **Editorial Palette**: Void Black (#080808), Pearl Ivory (#f5f5f5), and a signature **Vibrant Yellow** accent (#f5d142).
--   **Typography**: An asymmetric mix of high-contrast serif headers (**Cormorant Garamond**) and sharp, modern sans-serif bodies (**Neue Haas Grotesk**).
--   **Glassmorphism**: Deep background blurs and micro-border gradients for a translucent, premium feel.
--   **Cinematic Motion**: Hardware-accelerated parallax scrolling and "Reveal-on-Scroll" animations.
+A high-end dental appointment platform that redefines the clinical experience through a sophisticated glassmorphic interface, effortless motion, and a real-time AI assistant.
 
 ## ✨ Key Features
 
