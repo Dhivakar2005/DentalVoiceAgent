@@ -822,7 +822,22 @@ class DentalVoiceAgent:
         try:
             appts = self.sheets.get_appointments_by_id(cid)
             if not appts: return self.messages.get("no_appointments")
-            lines = [f"{a['appointment_date']} at {a['appointment_time']}" for a in appts]
+
+            # Filter for future/today appointments only
+            today = datetime.now(ZoneInfo(TIMEZONE)).date()
+            upcoming_appts = []
+            for a in appts:
+                try:
+                    appt_date = datetime.strptime(a['appointment_date'], "%Y-%m-%d").date()
+                    if appt_date >= today:
+                        upcoming_appts.append(a)
+                except:
+                    continue
+
+            if not upcoming_appts:
+                return self.messages.get("no_appointments")
+
+            lines = [f"{a['appointment_date']} at {a['appointment_time']}" for a in upcoming_appts]
             self.reset_state()
             msg = self.messages.get("view_appointments", "Your upcoming appointments: {lines}. Anything else?")
             return msg.format(lines=", and ".join(lines))
