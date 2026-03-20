@@ -520,7 +520,7 @@ class GoogleSheetsManager:
                 name_match = True
                 if search_name:
                     name_match = (row_name == search_name)
-                if id_match and date_match and time_match and name_match
+                if id_match and date_match and time_match and name_match:
                     print(f"[OK] [Sheets] Found matching row at index {i}")
                     return i
             # FALLBACK: If time match failed, check if there's ONLY ONE row for this ID and Date

@@ -403,7 +403,7 @@ def twilio_voice():
             timeout           = 5,            # seconds to wait for user to START
             actionOnEmptyResult = True        # fire webhook even on silence
         )
-        ssml_text = f'<speak><prosody rate="115%">{tts_text}</prosody></speak>'
+        ssml_text = f'<speak><prosody rate="100%">{tts_text}</prosody></speak>'
         gather.say(ssml_text, voice='Polly.Joanna', language='en-US')
         # No resp.redirect() here — removes one unnecessary HTTP round trip
 

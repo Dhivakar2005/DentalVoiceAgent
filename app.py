@@ -292,7 +292,7 @@ class VoiceInterface:
             voices = self.engine.getProperty('voices')
             if len(voices) > 0:
                 self.engine.setProperty('voice', voices[0].id)
-            self.engine.setProperty('rate', 150)
+            self.engine.setProperty('rate', 100)
             self.engine.setProperty('volume', 1.0)
             if SPEECH_RECOGNITION_AVAILABLE:
                 self.recognizer = sr.Recognizer()
