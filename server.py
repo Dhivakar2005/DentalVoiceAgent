@@ -20,12 +20,11 @@ from database_manager import DatabaseManager
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
 # every restart and logs out all users.
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-me-in-production-use-env-var")
+app.secret_key = "smile-dental-secret-key"
+TWILIO_ACCOUNT_SID = "AC506f68fd1ca2276f9319ac88272029a7"
+TWILIO_AUTH_TOKEN = "dc054c2547db06e652baf474c25b9789"
 
 CORS(app)
-
-# Twilio auth token for webhook signature validation
-TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
 
 # Session TTL in seconds — inactive sessions are cleaned up automatically
 SESSION_TTL = 600   # 10 minutes
@@ -332,14 +331,35 @@ def validate_twilio_request(f):
             print("[WARNING] TWILIO_AUTH_TOKEN not set — skipping signature validation")
             return f(*args, **kwargs)
 
-        validator  = RequestValidator(TWILIO_AUTH_TOKEN)
-        url        = request.url
-        post_vars  = request.form.to_dict()
-        signature  = request.headers.get('X-Twilio-Signature', '')
+        validator = RequestValidator(TWILIO_AUTH_TOKEN)
+        
+        # Determine the public URL (essential when behind ngrok / proxies)
+        # Use X-Forwarded headers if available, else fallback to request.url
+        original_url = request.url
+        if 'X-Forwarded-Proto' in request.headers and 'X-Forwarded-Host' in request.headers:
+            proto = request.headers['X-Forwarded-Proto'].split(',')[0].strip()
+            host  = request.headers['X-Forwarded-Host'].split(',')[0].strip()
+            # If standard ports are used, append just the path
+            original_url = f"{proto}://{host}{request.path}"
+            # Re-append query string if present (request.path doesn't include it)
+            if request.query_string:
+                original_url += f"?{request.query_string.decode()}"
 
-        if not validator.validate(url, post_vars, signature):
-            print("[SECURITY] Twilio signature validation FAILED")
+        post_vars = request.form.to_dict()
+        signature = request.headers.get('X-Twilio-Signature', '')
+
+        if not validator.validate(original_url, post_vars, signature):
+            # Log the mismatch for debugging
+            print(f"[SECURITY] Twilio signature validation FAILED")
+            # print(f"  > Signature: {signature}")
+            print(f"  > URL used for validation: {original_url}")
+            
+            # UNCOMMENT the line below to temporary bypass validation if you're stuck
+            # return f(*args, **kwargs)
+            
             return "Forbidden", 403
+        
+        print(f"[SECURITY] Twilio signature validation PASSED for: {original_url}")
         return f(*args, **kwargs)
     return decorated
 
@@ -410,18 +430,20 @@ def twilio_voice():
         return str(resp)
 
     except Exception as e:
-        print(f"[ERROR] Twilio handler: {e}")
+        print(f"[ERROR] Twilio handler caught exception: {e}")
         traceback.print_exc()
-
+        
+        # Log to file for persistence
         try:
-            with open("error_log.txt", "a") as f:
-                f.write(f"[{datetime.now().isoformat()}] Twilio error: {e}\n")
-                traceback.print_exc(file=f)
-        except Exception:
+            with open("twilio_error_log.txt", "a") as f:
+                f.write(f"[{datetime.now().isoformat()}] ERROR: {e}\n")
+                f.write(traceback.format_exc())
+                f.write("-" * 40 + "\n")
+        except:
             pass
 
         error_resp = VoiceResponse()
-        error_resp.say("I'm sorry, a system error occurred. Please call back in a moment.")
+        error_resp.say("I'm sorry, a system error occurred. Please check the logs.")
         return str(error_resp)
 
 #  ENTRY POINT 

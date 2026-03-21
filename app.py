@@ -218,38 +218,45 @@ def fast_extract_date(text):
         'july':7,'august':8,'september':9,'october':10,'november':11,'december':12,
     }
     _MON_RE = '|'.join(_MONTHS.keys())
-    m = re.search(rf'\b(\d{{1,2}})(?:st|nd|rd|th)?\s+({_MON_RE})\b', t)
+    # More robust date extraction for "23 rd march", "23march", etc.
+    # Pattern 1: Day Month
+    m = re.search(r'\b(\d{1,2})(?:\s*(?:st|nd|rd|th))?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*', t, re.IGNORECASE)
     if m:
-        day = int(m.group(1)); mon = _MONTHS[m.group(2)]
-        yr  = today.year
+        day = int(m.group(1)); mon_str = m.group(2).lower()[:3]; mon = _MONTHS[mon_str]
+        yr = today.year
         try:
             base = datetime(yr, mon, day, tzinfo=ZoneInfo(TIMEZONE))
-            if base < today: yr += 1
+            if base.date() < today.date(): yr += 1
             return datetime(yr, mon, day).strftime("%Y-%m-%d")
         except: pass
-    m = re.search(rf'\b({_MON_RE})\s+(\d{{1,2}})(?:st|nd|rd|th)?\b', t)
+    
+    # Pattern 2: Month Day
+    m = re.search(r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})(?:\s*(?:st|nd|rd|th))?\b', t, re.IGNORECASE)
     if m:
-        mon = _MONTHS[m.group(1)]; day = int(m.group(2))
-        yr  = today.year
+        mon_str = m.group(1).lower()[:3]; mon = _MONTHS[mon_str]; day = int(m.group(2))
+        yr = today.year
         try:
             base = datetime(yr, mon, day, tzinfo=ZoneInfo(TIMEZONE))
-            if base < today: yr += 1
+            if base.date() < today.date(): yr += 1
             return datetime(yr, mon, day).strftime("%Y-%m-%d")
         except: pass
 
     return None
 
-
 def fast_extract_time(text):
     t = text.strip()
     # Normalize "p.m." / "a.m." to "PM" / "AM"
     t = re.sub(r'\b([ap])\.?m\.?\b', r'\1m', t, flags=re.IGNORECASE)
-    tu = t.upper()
+    # Normalize and strip common prefixes
+    t_clean = re.sub(r'\b(at|on|for|the|in)\b', ' ', t, flags=re.IGNORECASE).strip()
+    tu = t_clean.upper()
+    
     m = re.search(r'\b(\d{1,2}):(\d{2})\s*([AP]M)\b', tu)
     if m: return f"{m.group(1)}:{m.group(2)} {m.group(3)}"
     m = re.search(r'\b(\d{1,2})\s*([AP]M)\b', tu)
     if m: return f"{m.group(1)}:00 {m.group(2)}"
-    tl = t.lower()
+    
+    tl = t_clean.lower()
     m = re.search(r'\b(\d{1,2})(?::(\d{2}))?\s*(?:in\s+the\s+)?(morning|afternoon|evening|night)\b', tl)
     if m:
         h = int(m.group(1)); mn = m.group(2) or '00'; period = m.group(3)
@@ -636,6 +643,20 @@ class DentalVoiceAgent:
                         if kw in t_lower:
                             return faq["answer"]
 
+            #  2.5. Goodbye / Thanks / Yes 
+            t_lower = text.lower().strip(" .?!")
+            goodbye_patterns = [
+                r'\b(thank|thanks|thank you)\b',
+                r'\b(bye|goodbye|ttyl|see you|nothing else|no more|that is it|that\'s it)\b',
+                r'\b(no\s+thank\s*s?|no\s+i\s+am\s+good|im\s+good|nothing\s+else|nothing|no|nah|nope)\b'
+            ]
+            if any(re.search(p, t_lower) for p in goodbye_patterns):
+                self.reset_state()
+                return self.messages.get("goodbye", "Goodbye! Have a great day.")
+            
+            if re.match(r'^(yes|yeah|yep|sure|yup)$', t_lower):
+                return self.messages.get("help_options", "I can help you book, reschedule, or cancel an appointment. What would you like to do?")
+
             #  3. Fast extraction (no LLM) 
             fast_found = self._extract_fast(text)
             print(f"[FAST] {fast_found}")
@@ -694,6 +715,20 @@ class DentalVoiceAgent:
 
             #  6. All fields ready → confirm 
             if self.state["workflow_state"] != "COMPLETED":
+                # Pre-check business hours to avoid confirming invalid slots
+                try:
+                    start = self._parse_dt(self.state.get("date"), self.state.get("time"))
+                    if not self._is_biz_hours(start):
+                        if start.weekday() == 6: # Sunday
+                            self.state["date"] = None
+                            self.state["time"] = None
+                            return "We are closed on Sundays. Please choose another date and time."
+                        else:
+                            self.state["time"] = None
+                            return "We are only open from 9 AM to 5 PM. What other time would you like to choose?"
+                except Exception:
+                    pass
+
                 self.state["workflow_state"] = "WAITING_CONFIRMATION"
                 return self._confirm_prompt()
 
@@ -733,12 +768,23 @@ class DentalVoiceAgent:
         except ValueError as e: return str(e)
 
         if not self._is_biz_hours(start):
-            return self.messages.get("closed_biz_hours")
+            # Clear both if it's a Sunday (closed all day) or just time if it's out of hours
+            if start.weekday() == 6: # Sunday
+                self.state["date"] = None
+                self.state["time"] = None
+                return "We are closed on Sundays. Please choose another date and time."
+            else:
+                self.state["time"] = None
+                return "We are only open from 9 AM to 5 PM. What other time would you like to choose?"
 
         today = datetime.now(ZoneInfo(TIMEZONE)).date()
         days  = (start.date() - today).days
-        if days < 0:  return self.messages.get("past_date")
-        if days > 3:  return self.messages.get("advanced_booking_limit")
+        if days < 0:
+            self.state["date"] = None
+            return self.messages.get("past_date")
+        if days > 3:
+            self.state["date"] = None
+            return self.messages.get("advanced_booking_limit")
 
         try:
             cid = self.state.get("customer_id") or self.sheets.generate_customer_id()

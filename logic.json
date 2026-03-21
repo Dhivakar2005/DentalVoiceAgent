@@ -1,8 +1,8 @@
 {
   "faq_database": {
     "hours": {
-      "keywords": ["hours", "open", "close", "timing", "when open", "what time", "operating hours", "work time", "working hours"],
-      "answer": "We are open Monday to Saturday, 9 AM to 5 PM. We are closed on Sundays."
+      "keywords": ["hours", "open", "close", "timing", "when open", "what time", "operating hours", "work time", "working hours", "timing", "when do you close", "working days"],
+      "answer": "We are open Monday to Saturday, from 9 AM to 5 PM. We are closed on Sundays."
     },
     "booking_methods": {
       "keywords": ["how to book", "how do i book", "book appointment", "make appointment", "schedule appointment", "booking process", "how can i book"],
@@ -53,8 +53,8 @@
       "answer": "Our clinic has experienced general dentists, a pediatric specialist, and orthodontic professionals — all licensed."
     },
     "insurance": {
-      "keywords": ["insurance", "coverage", "accept insurance", "dental plan", "health plan"],
-      "answer": "We accept most major dental insurance plans. Bring your insurance card to verify coverage."
+      "keywords": ["insurance", "coverage", "accept insurance", "dental plan", "health plan", "policy", "accept", "covered", "claims"],
+      "answer": "Yes, we accept major insurance policies. Please bring your insurance card during your visit for verification."
     },
     "location_parking": {
       "keywords": ["location", "address", "where are you", "directions", "parking", "how to get here"],
@@ -150,7 +150,7 @@
     "help_options": "I can help you book, reschedule, or cancel an appointment. What would you like to do?",
     "id_not_found": "I couldn't find that ID. Are you a new patient, or please try a different ID?",
     "welcome_back": "Welcome back, {name}! {next_prompt}",
-    "confirm_booking": "Just to confirm — booking for {name} on {date} at {time} for {reason}. Say yes to confirm or no to change.",
+    "confirm_booking": "Just to confirm booking for {name} on {date} at {time} for {reason}. Say yes to confirm or no to change.",
     "slot_taken": "That time slot is already taken. Please choose a different time.",
     "past_date": "That date is in the past. Please choose a future date.",
     "advanced_booking_limit": "We only accept bookings up to 3 days in advance.",
