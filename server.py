@@ -21,8 +21,8 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 
 # every restart and logs out all users.
 app.secret_key = "smile-dental-secret-key"
-TWILIO_ACCOUNT_SID = "AC506f68fd1ca2276f9319ac88272029a7"
-TWILIO_AUTH_TOKEN = "dc054c2547db06e652baf474c25b9789"
+TWILIO_ACCOUNT_SID = "your-twilio-account-sid"
+TWILIO_AUTH_TOKEN = "your-twilio-auth-token"
 
 CORS(app)
 
