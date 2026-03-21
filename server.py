@@ -20,7 +20,7 @@ from database_manager import DatabaseManager
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
 # every restart and logs out all users.
-app.secret_key = "smile-dental-secret-key"
+app.secret_key = "your-secret-key"
 TWILIO_ACCOUNT_SID = "your-twilio-account-sid"
 TWILIO_AUTH_TOKEN = "your-twilio-auth-token"
 
