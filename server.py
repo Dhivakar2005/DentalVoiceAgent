@@ -20,9 +20,9 @@ from database_manager import DatabaseManager
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
 # every restart and logs out all users.
-app.secret_key = "your-secret-key"
-TWILIO_ACCOUNT_SID = "your-twilio-account-sid"
-TWILIO_AUTH_TOKEN = "your-twilio-auth-token"
+# app.secret_key = "smile-dental-secret-key"
+# TWILIO_ACCOUNT_SID = "AC878d64388a378b523ba2af074bad4507"
+# TWILIO_AUTH_TOKEN = "addbbc8df222b3cd5d75dd201ee6530c"
 
 CORS(app)
 
