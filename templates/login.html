@@ -8,19 +8,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@300;400;700;800&family=Pacifico&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@300;400;700;800&display=swap"
         rel="stylesheet">
     <style>
         :root {
-            --accent: #f5d142;
-            /* Vibrant Editorial Yellow */
-            --bg: #080808;
-            --bg2: #0d0d0d;
-            --border: rgba(255, 255, 255, 0.08);
+            --accent: #d4af37; /* Champagne Gold */
+            --bg: #050505;
+            --bg2: #0a0a0a;
+            --border: rgba(255, 255, 255, 0.05);
             --white: #ffffff;
-            --white-dim: rgba(255, 255, 255, 0.6);
-            --white-faint: rgba(255, 255, 255, 0.1);
-            --transition: 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            --white-dim: rgba(255, 255, 255, 0.5);
+            --white-faint: rgba(255, 255, 255, 0.05);
+            --transition: 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         * {
@@ -86,7 +85,7 @@
 
         .auth-container {
             width: 100%;
-            max-width: 440px;
+            max-width: 380px;
             padding: 20px;
             position: relative;
             z-index: 10;
@@ -99,13 +98,20 @@
 
         .brand svg {
             color: var(--accent);
-            margin-bottom: 16px;
+            margin-bottom: 12px;
+            transform: scale(0.8);
+            transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .brand:hover svg {
+            transform: scale(0.8) rotate(180deg);
         }
 
         .brand h1 {
-            font-family: 'Pacifico', cursive;
-            font-size: 2rem;
-            letter-spacing: -0.02em;
+            font-family: 'Righteous', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
         }
 
         .brand h1 em {
@@ -118,11 +124,17 @@
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
             border: 1px solid var(--border);
-            padding: 64px 48px;
+            padding: 40px 32px;
             border-radius: 4px;
             box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
             position: relative;
-            overflow: hidden;
+            overflow: visible;
+            animation: fadeIn 0.8s var(--transition);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .auth-card::before {
@@ -170,17 +182,22 @@
         }
 
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: 18px;
+            position: relative;
         }
 
         .form-group label {
             display: block;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.1em;
             color: var(--white-dim);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+        }
+
+        .input-wrapper {
+            position: relative;
         }
 
         .form-group input {
@@ -188,9 +205,9 @@
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border);
             border-radius: 4px;
-            padding: 18px 20px;
+            padding: 14px 16px;
             color: var(--white);
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-family: 'Nunito', sans-serif;
             outline: none;
             transition: all var(--transition);
@@ -200,6 +217,26 @@
             border-color: var(--accent);
             background: rgba(255, 255, 255, 0.05);
             box-shadow: 0 0 20px rgba(245, 209, 66, 0.05);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--white-dim);
+            cursor: pointer;
+            transition: color 0.3s;
+            background: none;
+            border: none;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-password:hover {
+            color: var(--accent);
         }
 
         /* Fix Chrome autofill blue */
@@ -213,24 +250,75 @@
 
         .btn-submit {
             width: 100%;
-            background: var(--accent);
-            color: var(--bg);
-            border: none;
-            padding: 20px;
-            font-family: 'Righteous', cursive;
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 14px;
+            font-family: 'Righteous', sans-serif;
             font-size: 0.8rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.25em;
             cursor: pointer;
             transition: all var(--transition);
-            margin-top: 20px;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn-submit:hover {
-            background: var(--white);
+            background: var(--accent);
+            color: var(--bg);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 20px 0;
+            color: var(--white-faint);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .divider:not(:empty)::before { margin-right: 16px; }
+        .divider:not(:empty)::after { margin-left: 16px; }
+
+        .social-btns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .social-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: var(--white-dim);
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .social-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--white-dim);
+            color: var(--white);
         }
 
         .msg {
@@ -260,9 +348,10 @@
 
     <div class="auth-container">
         <div class="brand">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2v20M2 12h20M7 7l10 10M7 17L17 7" />
+            <!-- Official Home Page Logo -->
+            <svg class="logo-mark" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.9;">
+                <path d="M12 2v20M2 12h20M7 7l10 10M7 17L17 7"/>
+                <circle cx="12" cy="12" r="10" stroke-width="1.5" opacity="0.5"/>
             </svg>
             <h1>Smile <em>Dental</em></h1>
         </div>
@@ -281,16 +370,41 @@
 
                 <div class="form-group">
                     <label>Email Address</label>
-                    <input type="email" id="email" required placeholder="name@luxury.com">
+                    <input type="email" id="email" required placeholder="name@clinic.com">
                 </div>
 
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="password" required placeholder="••••••••">
+                    <div class="input-wrapper">
+                        <input type="password" id="password" required placeholder="••••••••">
+                        <button type="button" class="toggle-password" id="togglePassword">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-submit" id="submit-btn">Authenticate</button>
             </form>
+
+            <div class="divider">or continue with</div>
+
+            <div class="social-btns">
+                <div class="social-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
+                    Google
+                </div>
+                <div class="social-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.82-.779.883-1.453 2.311-1.272 3.672 1.35.104 2.714-.65 3.559-1.662z"/>
+                    </svg>
+                    Apple
+                </div>
+            </div>
 
             <div id="message" class="msg"></div>
         </div>
@@ -303,8 +417,22 @@
         const nameGroup = document.getElementById('name-group');
         const submitBtn = document.getElementById('submit-btn');
         const messageDiv = document.getElementById('message');
+        const passwordInput = document.getElementById('password');
+        const togglePassword = document.getElementById('togglePassword');
 
         let mode = 'signin';
+
+        // Toggle Password Visibility
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            togglePassword.classList.toggle('active');
+            
+            // Update icon
+            togglePassword.innerHTML = type === 'password' 
+                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`
+                : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+        });
 
         tabSignin.addEventListener('click', () => {
             mode = 'signin';
@@ -326,11 +454,20 @@
 
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            messageDiv.innerHTML = 'Validating credentials...';
-
+            
             const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const password = passwordInput.value;
             const name = document.getElementById('name').value;
+
+            // Client-side Validation
+            if (password.length < 4) {
+                messageDiv.innerText = 'Password must be at least 4 characters.';
+                messageDiv.className = 'msg msg-error';
+                return;
+            }
+
+            messageDiv.innerHTML = 'Validating credentials...';
+            messageDiv.className = 'msg';
 
             const endpoint = mode === 'signin' ? '/signin' : '/signup';
             const payload = { email, password };
@@ -365,6 +502,14 @@
             }
         });
 
+        // Social mockup click events
+        document.querySelectorAll('.social-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                messageDiv.innerText = 'Social Login is coming soon!';
+                messageDiv.className = 'msg msg-success';
+            });
+        });
+
         //  CURSOR LOGIC 
         const cursor = document.getElementById('cursor');
         const trail = document.getElementById('cursorTrail');
@@ -388,7 +533,7 @@
         tick();
 
         // Hover effects for inputs and buttons
-        const interactibles = document.querySelectorAll('input, button, .tab');
+        const interactibles = document.querySelectorAll('input, button, .tab, .social-btn');
         interactibles.forEach(el => {
             el.addEventListener('mouseenter', () => {
                 cursor.style.width = '24px';

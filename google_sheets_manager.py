@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from database_manager import DatabaseManager
 
 
 # Configuration
@@ -24,13 +25,10 @@ class GoogleSheetsManager:
 
     """Manages customer data in Google Sheets"""
     def __init__(self):
-
+        self.db = DatabaseManager()
         self.service = self.authenticate()
-
         self.spreadsheet_id = None
-
         self.sheet_name = "Customers"
-
         self.initialize_sheet()
 
     
@@ -180,150 +178,35 @@ class GoogleSheetsManager:
             return 0
 
     def generate_customer_id(self):
-
-        """Generate next customer ID (CUST001, CUST002, etc.) from Customer_Master sheet"""
-        try:
-            # Get all customer IDs from Customer_Master sheet
-            result = self.service.spreadsheets().values().get(
-
-                spreadsheetId=self.spreadsheet_id,
-
-                range=f'{CUSTOMER_MASTER_SHEET}!A:A'
-
-            ).execute()
-
-            values = result.get('values', [])
-            if len(values) <= 1:  # Only header or empty
-                return "CUST001"
-            # Extract numbers from existing IDs and find max
-            max_num = 0
-            for row in values[1:]:  # Skip header
-                if row and row[0].startswith('CUST'):
-                    try:
-                        num = int(row[0].replace('CUST', ''))
-                        max_num = max(max_num, num)
-                    except:
-                        continue
-            # Generate next ID
-            next_num = max_num + 1
-            return f"CUST{next_num:03d}"
-        except Exception as e:
-            print(f"Error generating customer ID: {e}")
-            return "CUST001"
+        """Generate next customer ID (CUST001, CUST002, etc.) from MongoDB"""
+        return self.db.get_next_customer_id()
 
     def get_customer_by_id(self, customer_id):
+        """Retrieve customer details by customer ID from MongoDB"""
+        return self.db.get_customer_by_id(customer_id)
 
-        """Retrieve customer details by customer ID from the Master sheet"""
-        try:
-            result = self.service.spreadsheets().values().get(
-
-                spreadsheetId=self.spreadsheet_id,
-
-                range=f'{CUSTOMER_MASTER_SHEET}!A:D'
-
-            ).execute()
-
-            values = result.get('values', [])
-            # Simple search in Master
-            for i, row in enumerate(values[1:], start=2):
-                if row and len(row) > 0 and row[0].upper() == customer_id.upper():
-                    return {
-
-                        'customer_id': row[0],
-
-                        'name': row[1] if len(row) > 1 else '',
-
-                        'phone': row[2] if len(row) > 2 else '',
-
-                        'created_date': row[3] if len(row) > 3 else '',
-
-                        'row_number': i
-
-                    }
-            return None
-        except Exception as e:
-            print(f"Error getting customer by ID: {e}")
-            return None
+    def get_customer_by_phone(self, phone):
+        """Retrieve customer details by phone number from MongoDB"""
+        return self.db.get_customer_by_phone(phone)
 
     def get_customer_by_name(self, name):
-
-        """Search for customer by name in the Master sheet"""
-        try:
-            result = self.service.spreadsheets().values().get(
-                spreadsheetId=self.spreadsheet_id,
-
-                range=f'{CUSTOMER_MASTER_SHEET}!A:D'
-
-            ).execute()
-
-            values = result.get('values', [])
-            name_lower = name.lower().strip()
-            for i, row in enumerate(values[1:], start=2):
-                if len(row) > 1 and row[1].lower().strip() == name_lower:
-                    return {
-
-                        'customer_id': row[0],
-
-                        'name': row[1],
-
-                        'phone': row[2] if len(row) > 2 else '',
-
-                        'created_date': row[3] if len(row) > 3 else '',
-
-                        'row_number': i
-
-                    }
-            return None
-        except Exception as e:
-            print(f"Error getting customer by name: {e}")
-            return None
+        """Search for customer by name in MongoDB with fuzzy fallback"""
+        # 1. Try exact/regex match first
+        customer = self.db.get_customer_by_name(name)
+        if customer:
+            return customer
+            
+        # 2. Try fuzzy match if exact match fails
+        print(f"[INFO] No exact match for '{name}', trying fuzzy search...")
+        return self.db.find_customer_fuzzy(name)
 
     def customer_exists_in_master(self, customer_id):
-
-        """Check if customer ID exists in Customer_Master sheet"""
-        try:
-            result = self.service.spreadsheets().values().get(
-                spreadsheetId=self.spreadsheet_id,
-
-                range=f'{CUSTOMER_MASTER_SHEET}!A:A'
-
-            ).execute()
-
-            values = result.get('values', [])
-            customer_id_upper = customer_id.upper()
-            for row in values[1:]:  # Skip header
-                if row and row[0].upper() == customer_id_upper:
-                    return True
-            return False
-        except Exception as e:
-            print(f"Error checking customer in master: {e}")
-            return False
+        """Check if customer ID exists in MongoDB"""
+        return self.db.get_customer_by_id(customer_id) is not None
 
     def log_new_customer(self, customer_id, name, phone):
-
-        """Log a new customer to Customer_Master sheet"""
-        try:
-            now = datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
-            values = [[customer_id, name, phone, now]]
-            self.service.spreadsheets().values().append(
-
-                spreadsheetId=self.spreadsheet_id,
-
-                range=f'{CUSTOMER_MASTER_SHEET}!A:D',
-
-                valueInputOption='RAW',
-
-                insertDataOption='INSERT_ROWS',
-
-                body={'values': values}
-
-            ).execute()
-
-            print(f"[OK] Logged new customer to Master: {customer_id} - {name}")
-            return True
-        except Exception as e:
-            print(f"Error logging new customer to master: {e}")
-            return False
+        """Log a new customer to MongoDB"""
+        return self.db.create_customer(customer_id, name, phone)
 
     def _load_offline_data(self):
 
@@ -385,9 +268,8 @@ class GoogleSheetsManager:
             return True # Return True so the app thinks it succeeded
 
     def get_all_customers(self):
-
-        """Return all customer records (Online + Offline)"""
-        customers = []
+        """Return all appointments (Online + Offline)"""
+        appointments = []
         # 1. Try to fetch from Sheets
         try:
             result = self.service.spreadsheets().values().get(
@@ -398,19 +280,13 @@ class GoogleSheetsManager:
             if len(values) > 1:
                 for row in values[1:]:  # Skip header
                     if isinstance(row, list) and len(row) >= 5:
-                        customers.append({
+                        appointments.append({
                             'customer_id': row[0],
-
                             'name': row[1] if len(row) > 1 else '',
-
                             'phone': row[2] if len(row) > 2 else '',
-
                             'appointment_date': row[3] if len(row) > 3 else '',
-
                             'appointment_time': row[4] if len(row) > 4 else '',
-
                             'appointment_reason': row[5] if len(row) > 5 else '',
-
                             'source': 'online'
                         })
 
@@ -420,24 +296,16 @@ class GoogleSheetsManager:
         offline_data = self._load_offline_data()
         for item in offline_data:
             if item.get("type") == "appointment":
-                customers.append({
-
+                appointments.append({
                     'customer_id': item["customer_id"],
-
                     'name': item["name"],
-
                     'phone': item["phone"],
-
                     'appointment_date': item["appointment_date"],
-
                     'appointment_time': item["appointment_time"],
-
                     'appointment_reason': item["reason"],
-
-                    'source': 'offline_pending' # Flag so admin knows it's pending
-
+                    'source': 'offline_pending'
                 })
-        return customers
+        return appointments
 
     def sync_offline_data(self):
 
@@ -630,103 +498,14 @@ class GoogleSheetsManager:
             return None
 
     def update_customer(self, customer_id, name=None, phone=None):
-
-        """Update existing customer information in Customer_Master sheet.
-        NOTE: Customer ID is PERMANENT and CANNOT be changed."""
-        try:
-            customer = self.get_customer_by_id(customer_id)
-            if not customer:
-                return False
-            row_num = customer['row_number']
-
-            # Update name if provided (Column B in Customer_Master)
-            if name:
-                self.service.spreadsheets().values().update(
-
-                    spreadsheetId=self.spreadsheet_id,
-
-                    range=f'{CUSTOMER_MASTER_SHEET}!B{row_num}',
-
-                    valueInputOption='RAW',
-
-                    body={'values': [[name]]}
-
-                ).execute()
-
-            # Update phone if provided (Column C in Customer_Master)
-            if phone:
-                self.service.spreadsheets().values().update(
-
-                    spreadsheetId=self.spreadsheet_id,
-
-                    range=f'{CUSTOMER_MASTER_SHEET}!C{row_num}',
-
-                    valueInputOption='RAW',
-
-                    body={'values': [[phone]]}
-
-                ).execute()
-
-            print(f"[OK] Updated customer in Master: {customer_id}")
-            return True
-        except Exception as e:
-            print(f"Error updating customer: {e}")
-            return False
+        """Update existing customer information in MongoDB"""
+        return self.db.update_customer(customer_id, name, phone)
 
     def update_last_visit(self, customer_id, appointment_date='', appointment_time='', reason=''):
-
-        """Update the appointment date, time, and reason for a customer"""
-        try:
-            customer = self.get_customer_by_id(customer_id)
-            if not customer:
-                return False
-            row_num = customer['row_number']
-
-            # Update appointment date if provided
-            if appointment_date:
-                self.service.spreadsheets().values().update(
-
-                    spreadsheetId=self.spreadsheet_id,
-
-                    range=f'{self.sheet_name}!D{row_num}',
-
-                    valueInputOption='RAW',
-
-                    body={'values': [[appointment_date]]}
-
-                ).execute()
-
-            # Update appointment time if provided
-            if appointment_time:
-                self.service.spreadsheets().values().update(
-
-                    spreadsheetId=self.spreadsheet_id,
-
-                    range=f'{self.sheet_name}!E{row_num}',
-
-                    valueInputOption='RAW',
-
-                    body={'values': [[appointment_time]]}
-
-                ).execute()
-
-            # Update reason if provided
-            if reason:
-                self.service.spreadsheets().values().update(
-
-                    spreadsheetId=self.spreadsheet_id,
-
-                    range=f'{self.sheet_name}!F{row_num}',
-
-                    valueInputOption='RAW',
-
-                    body={'values': [[reason]]}
-
-                ).execute()
-            return True
-        except Exception as e:
-            print(f"Error updating last visit: {e}")
-            return False
+        """Update the appointment in Sheets. This is tricky because we don't have row numbers anymore.
+        But wait, update_appointment should be used instead."""
+        print("[WARNING] update_last_visit is deprecated. Use update_appointment.")
+        return False
 
 
 

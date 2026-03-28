@@ -19,3 +19,6 @@ pymongo
 flask-bcrypt
 twilio
 tzdata
+flask-sock
+openai
+python-dotenv

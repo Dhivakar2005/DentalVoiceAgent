@@ -31,7 +31,7 @@ Smile Dental is a phone-ready agent. Call the clinic's Twilio-enabled number to 
 ## 🔧 Technical Stack
 -   **Backend**: Flask / Python 3.12
 -   **AI Engine**: Ollama (qwen3.5:0.8b)
--   **Database**: MongoDB (User Auth), Google Sheets (Customer Records)
+<!-- -   **Database**: MongoDB (User Auth), Google Sheets (Customer Records) -->
 -   **Communication**: Twilio Voice API, TwiML, Ngrok
 -   **Infrastructure**: Google Sheets API (v4), Google Calendar API (v3)
 -   **Frontend**: Hardware-accelerated CSS3, Vanilla JS, RequestAnimationFrame Motion.

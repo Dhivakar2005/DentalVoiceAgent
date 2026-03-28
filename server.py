@@ -1,31 +1,38 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import uuid
 import json
+import re
 import time
 import threading
 import traceback
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, g, make_response, Response, stream_with_context
 from flask_cors import CORS
+from flask_sock import Sock
 import requests as http_requests
-from twilio.twiml.voice_response import VoiceResponse
+from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 from twilio.request_validator import RequestValidator
 
 from app import DentalVoiceAgent, VoiceInterface, OLLAMA_BASE_URL, OLLAMA_MODEL
 from database_manager import DatabaseManager
 
-#  APP SETUP 
+#  APP SETUP      
 app = Flask(__name__, static_folder='static', template_folder='templates')
+sock = Sock(app)   # flask-sock — Twilio Media Streams WebSocket
 
 # every restart and logs out all users.
-
+app.secret_key = "smile-dental-secret-key"
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "AC878d64388a378b523ba2af074bad4507")
+TWILIO_AUTH_TOKEN  = os.getenv("TWILIO_AUTH_TOKEN",  "2a56742e1075e2e7e21cb683f3874669")
 
 CORS(app)
 
 # Session TTL in seconds — inactive sessions are cleaned up automatically
-SESSION_TTL = 600   # 10 minutes
+SESSION_TTL = 300   # 5 minutes
 
 #  SHARED SINGLETONS 
 # GoogleCalendarManager + OAuth build on every admin dashboard refresh.
@@ -59,7 +66,7 @@ def warmup_ollama():
                 "messages":   [{"role": "user", "content": "hi"}],
                 "stream":     False,
                 "keep_alive": -1,
-                "options":    {"num_predict": 1}
+                "options":    {"num_predict": 1, "num_gpu": -1}
             },
             timeout=120
         )
@@ -106,38 +113,52 @@ threading.Thread(target=cleanup_sessions, daemon=True).start()
 class WebVoiceAgent:
     """Wraps DentalVoiceAgent for the web / Twilio interface."""
 
-    def __init__(self, session_id):
+    def __init__(self, session_id, db_manager):
         self.session_id           = session_id
+        self.db_manager           = db_manager
         self.agent                = DentalVoiceAgent(use_voice=False)
         self.conversation_history = []
         self.last_active          = time.time()
+        
+        # Load existing state if available
+        saved_state = self.db_manager.get_session_state(session_id)
+        if saved_state:
+            self.agent.state = saved_state
+            print(f"[SESSION] Restored state for {session_id}")
 
     def process_message(self, user_message):
+        """Non-streaming version for Twilio/Voice."""
         self.last_active = time.time()
         try:
-            self.conversation_history.append({
-                "role":      "user",
-                "message":   user_message,
-                "timestamp": datetime.now().isoformat()
-            })
-            response = self.agent.generate_response(user_message)
-            self.conversation_history.append({
-                "role":      "agent",
-                "message":   response,
-                "timestamp": datetime.now().isoformat()
-            })
-            return {
-                "success":      True,
-                "response":     response,
-                "state":        self.agent.state,
-                "conversation": self.conversation_history
-            }
+            self.conversation_history.append({"role":"user","message":user_message,"timestamp":datetime.now().isoformat()})
+            # Consume the generator fully
+            response_chunks = list(self.agent.generate_response(user_message))
+            response = "".join(response_chunks)
+            
+            self.db_manager.update_session_state(self.session_id, self.agent.state)
+            self.conversation_history.append({"role":"agent","message":response,"timestamp":datetime.now().isoformat()})
+            return {"success":True,"response":response,"state":self.agent.state,"conversation":self.conversation_history}
         except Exception as e:
-            return {
-                "success":  False,
-                "error":    str(e),
-                "response": "Sorry, I encountered an error. Please try again."
-            }
+            traceback.print_exc()
+            return {"success":False,"error":str(e),"response":"Sorry, I encountered an error."}
+
+    def process_message_stream(self, user_message):
+        """Streaming version for Web Chat."""
+        self.last_active = time.time()
+        self.conversation_history.append({"role":"user","message":user_message,"timestamp":datetime.now().isoformat()})
+        
+        try:
+            full_response_parts = []
+            for chunk in self.agent.generate_response(user_message):
+                full_response_parts.append(chunk)
+                yield chunk
+
+            full_response = "".join(full_response_parts)
+            self.db_manager.update_session_state(self.session_id, self.agent.state)
+            self.conversation_history.append({"role":"agent","message":full_response,"timestamp":datetime.now().isoformat()})
+        except Exception as e:
+            traceback.print_exc()
+            yield f"Error: {str(e)}"
 
     def reset(self):
         self.agent.reset_state()
@@ -148,16 +169,32 @@ class WebVoiceAgent:
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if 'user_id' not in session:
+        token = request.cookies.get('jwt_token')
+        if not token:
             return jsonify({"success": False, "error": "Login required"}), 401
+        
+        payload = db.decode_token(token)
+        if not payload:
+            return jsonify({"success": False, "error": "Session expired, please login again"}), 401
+            
+        g.user_id = payload.get("user_id")
+        g.role    = payload.get("role")
         return f(*args, **kwargs)
     return decorated
 
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if session.get('role') != 'admin':
+        token = request.cookies.get('jwt_token')
+        if not token:
+            return jsonify({"success": False, "error": "Admin access required"}), 401
+            
+        payload = db.decode_token(token)
+        if not payload or payload.get('role') != 'admin':
             return jsonify({"success": False, "error": "Admin access required"}), 403
+            
+        g.user_id = payload.get("user_id")
+        g.role    = payload.get("role")
         return f(*args, **kwargs)
     return decorated
 
@@ -170,11 +207,21 @@ def signin():
         password = data.get('password', '')
         user = db.authenticate_user(email, password)
         if user:
-            session['user_id'] = str(user['_id'])
-            session['email']   = user['email']
-            session['name']    = user['name']
-            session['role']    = user.get('role', 'user')
-            return jsonify({"success": True, "message": "Login successful", "role": session['role']})
+            token = db.generate_token(user['_id'], user['email'], user['name'], user.get('role', 'user'))
+            response = make_response(jsonify({
+                "success": True, 
+                "message": "Login successful", 
+                "role": user.get('role', 'user')
+            }))
+            # Set JWT as HttpOnly cookie for security
+            response.set_cookie(
+                'jwt_token', 
+                token, 
+                httponly=True, 
+                samesite='Lax', 
+                max_age=24*3600 # 24 hours
+            )
+            return response
         return jsonify({"success": False, "error": "Invalid email or password"}), 401
     return render_template('login.html', type='signin')
 
@@ -193,19 +240,27 @@ def signup():
 
 @app.route('/logout')
 def logout():
-    session.clear()
-    return jsonify({"success": True, "message": "Logged out successfully"})
+    response = make_response(jsonify({"success": True, "message": "Logged out successfully"}))
+    response.delete_cookie('jwt_token')
+    return response
 
 @app.route('/')
 def index():
-    if 'user_id' not in session:
+    token = request.cookies.get('jwt_token')
+    payload = db.decode_token(token) if token else None
+    
+    if not payload:
         return render_template('login.html', type='signin')
-    return render_template('index.html', user_name=session.get('name'), role=session.get('role'))
+        
+    return render_template('index.html', user_name=payload.get('name', 'User'), role=payload.get('role'))
 
 #  ADMIN ROUTES 
 @app.route('/admin')
 def admin_dashboard():
-    if session.get('role') != 'admin':
+    token = request.cookies.get('jwt_token')
+    payload = db.decode_token(token) if token else None
+    
+    if not payload or payload.get('role') != 'admin':
         return render_template('login.html', type='signin', error="Admin access required")
     return render_template('admin.html')
 
@@ -243,6 +298,7 @@ def get_admin_data():
         return jsonify({
             "success":         True,
             "appointments":    appointments,
+            "customers":       agent.db.get_all_customers_data(),
             "calendar_events": safe_events
         })
     except Exception as e:
@@ -253,7 +309,7 @@ def get_admin_data():
 def start_session():
     session_id = str(uuid.uuid4())
     with sessions_lock:
-        sessions[session_id] = WebVoiceAgent(session_id)
+        sessions[session_id] = WebVoiceAgent(session_id, db)
     return jsonify({
         "success":    True,
         "session_id": session_id,
@@ -276,6 +332,25 @@ def send_message():
 
     result = agent.process_message(message)
     return jsonify(result)
+
+@app.route('/api/send-message-stream')
+def send_message_stream():
+    session_id = request.args.get('session_id', '').strip()
+    message    = request.args.get('message', '').strip()
+
+    with sessions_lock:
+        agent = sessions.get(session_id)
+
+    if not agent:
+        return Response("Error: Invalid session", status=400)
+    if not message:
+        return Response("Error: Message cannot be empty", status=400)
+
+    def generate():
+        for chunk in agent.process_message_stream(message):
+            yield chunk
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 @app.route('/api/reset-session', methods=['POST'])
 def reset_session():
@@ -366,83 +441,69 @@ def validate_twilio_request(f):
 @validate_twilio_request
 def twilio_voice():
     """
-    Handle incoming Twilio voice calls.
-
-    Key fixes vs original:
-      • speechTimeout='auto'  — VAD-based end-of-speech detection (was fixed '1')
-      • speechModel='phone_call' + enhanced=True — faster, more accurate STT
-      • language='en-IN'      — matches user base in Coimbatore
-      • actionOnEmptyResult=True — prevents silent dead air on no-input
-      • Removed resp.redirect() after Gather — eliminates extra round trip
-      • Session keyed by CallSid — persists across turns of the same call
+    Handle incoming Twilio voice calls using a turn-based Chatbot approach.
+    Replaces the previous Real-time Media Stream (Deepgram) with native Voice tools.
     """
-    call_sid      = request.values.get('CallSid', '')
-    speech_result = request.values.get('SpeechResult', '').strip()
-    resp          = VoiceResponse()
+    call_sid = request.form.get('CallSid')
+    print(f"\n[CALL] New Call Started: {call_sid}")
+    
+    # Initialize a new agent for this specific call
+    with sessions_lock:
+        agent = DentalVoiceAgent(use_voice=False)
+        sessions[call_sid] = agent
 
-    try:
-        #  New call 
-        if call_sid not in sessions:
-            print(f"[CALL] New call: {call_sid}")
-            with sessions_lock:
-                sessions[call_sid] = WebVoiceAgent(call_sid)
-            response_text = "Hello! Welcome to Smile Dental. How can I help you today?"
+    resp = VoiceResponse()
+    
+    # Initial greeting
+    greeting = "Hello! Welcome to Smile Dental clinic. I'd be more than happy to help you today! How can I assist you?"
+    resp.say(greeting, voice='Polly.Amy')
 
-        #  Existing call with speech input 
-        elif speech_result:
-            print(f"[USER] ({call_sid}): {speech_result}")
-            with sessions_lock:
-                agent = sessions.get(call_sid)
-            if agent:
-                result        = agent.process_message(speech_result)
-                response_text = result.get('response', "Sorry, I encountered an error.")
-            else:
-                response_text = "I'm sorry, your session expired. Please call again."
-            print(f"[AGENT]: {response_text}")
+    # Gather speech from the user
+    gather = resp.gather(input='speech', action='/twilio/handle-input', speechTimeout='auto', language='en-IN')
+    
+    return str(resp), 200, {'Content-Type': 'text/xml'}
 
-        #  Redirect / silence / empty input 
-        else:
-            response_text = "I didn't catch that — could you please repeat?"
+@app.route('/twilio/handle-input', methods=['POST'])
+@validate_twilio_request
+def twilio_handle_input():
+    """
+    Processes the captured speech from Twilio and generates the next AI response.
+    """
+    call_sid   = request.form.get('CallSid')
+    user_text  = request.form.get('SpeechResult', '').strip()
+    
+    # 1. Retrieve the existing agent for this call
+    with sessions_lock:
+        agent = sessions.get(call_sid)
+    
+    # If session expired or was lost, restart
+    if not agent:
+        resp = VoiceResponse()
+        resp.redirect('/twilio/voice')
+        return str(resp), 200, {'Content-Type': 'text/xml'}
 
-        #  Sanitize for TTS 
-        tts_text = str(response_text).replace("*", "").replace("\n", ". ").strip()
-        if not tts_text:
-            tts_text = "I'm sorry, something went wrong. Please try again."
+    print(f"  [USER ({call_sid[:8]})] {user_text}")
 
-        #  Build TwiML — single Gather, no redirect 
-        gather = resp.gather(
-            input             = 'speech',
-            action            = '/twilio/voice',
-            method            = 'POST',
-            speechTimeout     = 'auto',       # VAD end-of-speech — no fixed wait
-            speechModel       = 'phone_call', # phone-optimised STT model
-            enhanced          = True,         # Twilio enhanced STT
-            language          = 'en-IN',      # Indian English — better accuracy
-            timeout           = 5,            # seconds to wait for user to START
-            actionOnEmptyResult = True        # fire webhook even on silence
-        )
-        ssml_text = f'<speak><prosody rate="100%">{tts_text}</prosody></speak>'
-        gather.say(ssml_text, voice='Polly.Joanna', language='en-US')
-        # No resp.redirect() here — removes one unnecessary HTTP round trip
+    # 2. Generate the AI reply (using existing DentalVoiceAgent logic)
+    # This also triggers tools (Calendar/Sheets) if needed
+    reply_gen = agent.generate_response(user_text)
+    reply = "".join(list(reply_gen))
+    print(f"  [AI ({call_sid[:8]})] {reply}")
 
-        return str(resp)
 
-    except Exception as e:
-        print(f"[ERROR] Twilio handler caught exception: {e}")
-        traceback.print_exc()
-        
-        # Log to file for persistence
-        try:
-            with open("twilio_error_log.txt", "a") as f:
-                f.write(f"[{datetime.now().isoformat()}] ERROR: {e}\n")
-                f.write(traceback.format_exc())
-                f.write("-" * 40 + "\n")
-        except:
-            pass
+    resp = VoiceResponse()
+    resp.say(reply, voice='Polly.Amy')
 
-        error_resp = VoiceResponse()
-        error_resp.say("I'm sorry, a system error occurred. Please check the logs.")
-        return str(error_resp)
+    # 3. Check if we should end the call (e.g. if the intent was "end_call")
+    # In the Chatbot mode, we just check if it's been completed or if the user thanked
+    if any(kw in user_text.lower() for kw in ("thank", "bye", "enough")):
+        resp.hangup()
+        with sessions_lock: sessions.pop(call_sid, None)
+    else:
+        # Keep the conversation going with another Gather
+        resp.gather(input='speech', action='/twilio/handle-input', speechTimeout='auto', language='en-IN')
+
+    return str(resp), 200, {'Content-Type': 'text/xml'}
 
 #  ENTRY POINT 
 if __name__ == '__main__':

@@ -257,7 +257,16 @@
         <div class="grid">
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">Sheet Registry</div>
+                    <div class="card-title">Customer Master (MongoDB)</div>
+                </div>
+                <div id="master-container">
+                    <div class="loading"><div class="loader"></div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Appointment Registry (Sheets)</div>
                 </div>
                 <div id="sheets-container">
                     <div class="loading"><div class="loader"></div></div>
@@ -281,12 +290,34 @@
                 const response = await fetch('/api/admin/data');
                 const data = await response.json();
                 if (data.success) {
+                    renderMaster(data.customers);
                     renderSheets(data.appointments);
                     renderCalendar(data.calendar_events);
                 }
             } catch (error) {
                 console.error('Fetch Error:', error);
             }
+        }
+
+        function renderMaster(customers) {
+            const container = document.getElementById('master-container');
+            if (!customers || customers.length === 0) {
+                container.innerHTML = '<p style="color: var(--white-dim)">No master records found.</p>';
+                return;
+            }
+
+            let html = `<table><thead><tr><th>Customer ID</th><th>Full Name</th><th>Phone</th><th>Joined</th></tr></thead><tbody>`;
+            customers.forEach(c => {
+                const joined = c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A';
+                html += `<tr>
+                    <td class="id-badge">${c.customer_id}</td>
+                    <td style="font-weight: 700">${c.name}</td>
+                    <td style="opacity: 0.6">${c.phone}</td>
+                    <td>${joined}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
         }
 
         function renderSheets(appointments) {

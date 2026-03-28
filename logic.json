@@ -1,111 +1,299 @@
 {
   "faq_database": {
     "hours": {
-      "keywords": ["hours", "open", "close", "timing", "when open", "what time", "operating hours", "work time", "working hours", "timing", "when do you close", "working days"],
+      "keywords": [
+        "hours",
+        "open",
+        "close",
+        "timing",
+        "when open",
+        "what time",
+        "operating hours",
+        "work time",
+        "working hours",
+        "timing",
+        "when do you close",
+        "working days"
+      ],
       "answer": "We are open Monday to Saturday, from 9 AM to 5 PM. We are closed on Sundays."
     },
     "booking_methods": {
-      "keywords": ["how to book", "how do i book", "book appointment", "make appointment", "schedule appointment", "booking process", "how can i book"],
+      "keywords": [
+        "how to book",
+        "how do i book",
+        "book appointment",
+        "make appointment",
+        "schedule appointment",
+        "booking process",
+        "how can i book"
+      ],
       "answer": "You can book by calling our voice assistant, using our website chat, or calling us directly."
     },
     "customer_id_info": {
-      "keywords": ["what is customer id", "why need id", "is id required", "do i need patient id", "what is patient id", "what is my id"],
-      "answer": "Your Customer ID (format CUST001) helps us access your records instantly. New patients receive one after their first appointment."
+      "keywords": [
+        "what is customer id",
+        "why need id",
+        "is id required",
+        "do i need patient id",
+        "what is patient id",
+        "what is my id"
+      ],
+      "answer": "Your registered mobile number helps us access your records instantly. New patients receive an ID after their first appointment."
     },
     "booking_window": {
-      "keywords": ["how far", "advance", "how many days", "book ahead", "future appointment", "days in advance"],
+      "keywords": [
+        "how far",
+        "advance",
+        "how many days",
+        "book ahead",
+        "future appointment",
+        "days in advance"
+      ],
       "answer": "You can book appointments up to 3 days in advance from today."
     },
     "services": {
-      "keywords": ["service", "services", "what do you offer", "treatments", "procedures", "what can you do", "dental services", "what treatment"],
+      "keywords": [
+        "service",
+        "services",
+        "what do you offer",
+        "treatments",
+        "procedures",
+        "what can you do",
+        "dental services",
+        "what treatment"
+      ],
       "answer": "We offer: General Dental Checkup, Tooth Filling, Root Canal Treatment, Braces and Teeth Alignment, Gum Treatment and Scaling, Crowns Bridges and Dentures, Tooth Extraction, Pediatric Dental Care, Dental X-rays, and Oral Disease Evaluation."
     },
     "appointment_duration": {
-      "keywords": ["how long", "duration", "appointment length", "how much time", "long is appointment"],
+      "keywords": [
+        "how long",
+        "duration",
+        "appointment length",
+        "how much time",
+        "long is appointment"
+      ],
       "answer": "Standard appointments are 10 minutes. Complex procedures may require a longer slot."
     },
     "reschedule_cancel_faq": {
-      "keywords": ["how to cancel", "how to reschedule", "cancellation procedure", "rescheduling procedure", "change appointment", "move appointment"],
+      "keywords": [
+        "how to cancel",
+        "how to reschedule",
+        "cancellation procedure",
+        "rescheduling procedure",
+        "change appointment",
+        "move appointment"
+      ],
       "answer": "Just tell me your name, phone number, and current appointment date and time — I will handle the rest."
     },
     "booking_info": {
-      "keywords": ["what information", "what do i need", "what details", "required information", "need to provide"],
-      "answer": "New patients need name, phone, preferred date and time, and reason for visit. Existing patients need their Customer ID."
+      "keywords": [
+        "what information",
+        "what do i need",
+        "what details",
+        "required information",
+        "need to provide"
+      ],
+      "answer": "New patients need name, phone, preferred date and time, and reason for visit. Existing patients just need their registered mobile number."
     },
     "forgot_id": {
-      "keywords": ["forgot id", "don't know id", "lost id", "forgot customer id", "don't have id"],
+      "keywords": [
+        "forgot id",
+        "don't know id",
+        "lost id",
+        "forgot customer id",
+        "don't have id"
+      ],
       "answer": "No problem! Give me your name and phone number and I will look up your records."
     },
     "late_cancellation": {
-      "keywords": ["penalty", "late cancel", "cancellation fee", "charge cancel", "cancel late"],
+      "keywords": [
+        "penalty",
+        "late cancel",
+        "cancellation fee",
+        "charge cancel",
+        "cancel late"
+      ],
       "answer": "No penalty, but we appreciate at least 24 hours notice so the slot can go to another patient."
     },
     "pediatric": {
-      "keywords": ["pediatric", "child", "children", "kids", "baby teeth", "child dentist", "kid dentist", "paediatric"],
+      "keywords": [
+        "pediatric",
+        "child",
+        "children",
+        "kids",
+        "baby teeth",
+        "child dentist",
+        "kid dentist",
+        "paediatric"
+      ],
       "answer": "Yes! We have a pediatric specialist for child-friendly treatments."
     },
     "xray_records": {
-      "keywords": ["x-ray", "xray", "x ray", "records", "dental records", "get my records", "medical records"],
+      "keywords": [
+        "x-ray",
+        "xray",
+        "x ray",
+        "records",
+        "dental records",
+        "get my records",
+        "medical records"
+      ],
       "answer": "Yes, you can request copies of your X-ray records and dental history. Ask via the assistant or contact us directly."
     },
     "doctors_staff": {
-      "keywords": ["doctors", "dentist", "staff", "who works", "specialist", "team", "professionals"],
+      "keywords": [
+        "doctors",
+        "dentist",
+        "staff",
+        "who works",
+        "specialist",
+        "team",
+        "professionals"
+      ],
       "answer": "Our clinic has experienced general dentists, a pediatric specialist, and orthodontic professionals — all licensed."
     },
     "insurance": {
-      "keywords": ["insurance", "coverage", "accept insurance", "dental plan", "health plan", "policy", "accept", "covered", "claims"],
+      "keywords": [
+        "insurance",
+        "coverage",
+        "accept insurance",
+        "dental plan",
+        "health plan",
+        "policy",
+        "accept",
+        "covered",
+        "claims"
+      ],
       "answer": "Yes, we accept major insurance policies. Please bring your insurance card during your visit for verification."
     },
     "location_parking": {
-      "keywords": ["location", "address", "where are you", "directions", "parking", "how to get here"],
+      "keywords": [
+        "location",
+        "address",
+        "where are you",
+        "directions",
+        "parking",
+        "how to get here"
+      ],
       "answer": "Please visit our website or call us for our address. Parking is available near the clinic."
     },
     "emergency": {
-      "keywords": ["emergency", "urgent", "toothache", "broken tooth", "dental emergency", "severe pain"],
+      "keywords": [
+        "emergency",
+        "urgent",
+        "toothache",
+        "broken tooth",
+        "dental emergency",
+        "severe pain"
+      ],
       "answer": "For dental emergencies, call us immediately. We do our best to accommodate urgent cases quickly."
     },
     "cost_fees": {
-      "keywords": ["cost", "price", "fee", "how much", "charges", "payment", "expensive"],
+      "keywords": [
+        "cost",
+        "price",
+        "fee",
+        "how much",
+        "charges",
+        "payment",
+        "expensive"
+      ],
       "answer": "Treatment costs vary by procedure. Visit us for a consultation and we will give you a detailed estimate."
     },
     "checkup_frequency": {
-      "keywords": ["how often", "frequency", "when should i come", "regular checkup", "routine check"],
+      "keywords": [
+        "how often",
+        "frequency",
+        "when should i come",
+        "regular checkup",
+        "routine check"
+      ],
       "answer": "Visit every 6 months for a routine check-up and cleaning, even if you have no pain."
     },
     "treatment_pain": {
-      "keywords": ["painful", "going to hurt", "hurt", "pain during", "scared of pain", "anesthesia"],
+      "keywords": [
+        "painful",
+        "going to hurt",
+        "hurt",
+        "pain during",
+        "scared of pain",
+        "anesthesia"
+      ],
       "answer": "Most modern dental treatments are nearly painless thanks to local anesthesia and advanced techniques."
     },
     "bleeding_gums": {
-      "keywords": ["bleeding gums", "blood when brushing", "gingivitis", "gum disease", "gums bleed"],
+      "keywords": [
+        "bleeding gums",
+        "blood when brushing",
+        "gingivitis",
+        "gum disease",
+        "gums bleed"
+      ],
       "answer": "Bleeding gums may indicate gingivitis. A check-up and cleaning can help significantly."
     },
     "brushing_time": {
-      "keywords": ["how long brush", "brushing time", "how to brush", "minutes to brush"],
+      "keywords": [
+        "how long brush",
+        "brushing time",
+        "how to brush",
+        "minutes to brush"
+      ],
       "answer": "Brush for at least 2 minutes twice daily with a soft-bristled toothbrush and fluoride toothpaste."
     },
     "tooth_decay": {
-      "keywords": ["tooth decay", "cavity", "cavities", "causes decay", "enamel"],
+      "keywords": [
+        "tooth decay",
+        "cavity",
+        "cavities",
+        "causes decay",
+        "enamel"
+      ],
       "answer": "Tooth decay happens when bacteria produce acids from sugar, damaging the tooth enamel."
     },
     "flossing": {
-      "keywords": ["floss", "flossing", "clean between teeth"],
+      "keywords": [
+        "floss",
+        "flossing",
+        "clean between teeth"
+      ],
       "answer": "Yes — flossing removes food and plaque between teeth where a toothbrush cannot reach."
     },
     "tooth_pain_advice": {
-      "keywords": ["tooth pain", "my tooth hurts", "what to do pain", "swollen tooth", "home remedy"],
+      "keywords": [
+        "tooth pain",
+        "my tooth hurts",
+        "what to do pain",
+        "swollen tooth",
+        "home remedy"
+      ],
       "answer": "Rinse with warm water and see a dentist immediately. Avoid self-medication."
     },
     "xray_safety": {
-      "keywords": ["xray safe", "x-rays safe", "radiation", "are x-rays dangerous"],
+      "keywords": [
+        "xray safe",
+        "x-rays safe",
+        "radiation",
+        "are x-rays dangerous"
+      ],
       "answer": "Yes — dental X-rays use very low radiation and are safe when taken only when necessary."
     },
     "bad_breath": {
-      "keywords": ["bad breath", "smelly breath", "halitosis", "mouth odor"],
+      "keywords": [
+        "bad breath",
+        "smelly breath",
+        "halitosis",
+        "mouth odor"
+      ],
       "answer": "Brush twice daily, floss, clean your tongue, drink water, and get regular dental cleanings."
     },
     "good_foods": {
-      "keywords": ["good foods", "what to eat", "healthy food for teeth", "calcium", "diet"],
+      "keywords": [
+        "good foods",
+        "what to eat",
+        "healthy food for teeth",
+        "calcium",
+        "diet"
+      ],
       "answer": "Calcium-rich foods like milk, cheese, fruits, vegetables, and nuts help maintain strong teeth."
     }
   },
@@ -133,14 +321,14 @@
   },
   "prompts": {
     "patient_type": "Are you a new or existing patient?",
-    "customer_id": "Please tell me your customer ID, for example CUST001.",
+    "customer_id": "Please provide your registered mobile number so I can find your records.",
     "name": "What is your full name?",
     "phone": "What is your phone number?",
     "date": "What date would you like to come in?",
-    "time": "What time works best for you?",
-    "reason": "What is the reason for your visit?",
+    "time": "What time works best for you,for example 11:00 AM or 12:00 PM.",
+    "reason": "What is the reason for your visit? (e.g., checkup, toothache or others)",
     "new_date": "What is the new date for your appointment?",
-    "new_time": "What is the new time for your appointment?"
+    "new_time": "What is the new time for your appointment?,for example 11:00 AM or 12:00 PM"
   },
   "system_messages": {
     "welcome": "Hello! Welcome to Smile Dental. How can I help you today?",
@@ -148,7 +336,7 @@
     "did_not_catch": "Sorry, I didn't catch that. Could you please repeat?",
     "unknown_error": "I'm sorry, something went wrong. Could you please repeat that?",
     "help_options": "I can help you book, reschedule, or cancel an appointment. What would you like to do?",
-    "id_not_found": "I couldn't find that ID. Are you a new patient, or please try a different ID?",
+    "id_not_found": "I couldn't find a record with that mobile number. Could you please double check? Or are you a new patient?",
     "welcome_back": "Welcome back, {name}! {next_prompt}",
     "confirm_booking": "Just to confirm booking for {name} on {date} at {time} for {reason}. Say yes to confirm or no to change.",
     "slot_taken": "That time slot is already taken. Please choose a different time.",

@@ -407,6 +407,7 @@ class VoiceAssistant {
     this.statusDot = suffix === 'Modal'
       ? document.getElementById('statusDot' + suffix)
       : document.querySelector('.status-dot');
+    this.thinkingIndicator = null;
 
     if (!this.sendBtn || !this.messageInput) return;
     this._initEvents();
@@ -478,22 +479,57 @@ class VoiceAssistant {
     this.addMessage('user', msg);
     this.messageInput.value = '';
     this.updateStatus('Processing…', 'loading');
+    this.showThinking();
+
     try {
-      const res = await fetch('/api/send-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: this.sessionId, message: msg })
-      });
-      const data = await res.json();
-      if (data.success) {
-        this.addMessage('agent', data.response);
-        this.updateStatus('Ready — type or speak', 'active');
-        this.speakText(data.response);
+      // Use the new streaming endpoint
+      const url = `/api/send-message-stream?session_id=${this.sessionId}&message=${encodeURIComponent(msg)}`;
+      const response = await fetch(url);
+
+      this.hideThinking();
+      if (!response.ok) throw new Error('Network response was not ok');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      // Create an empty agent message bubble to fill
+      const bubble = this.addMessage('agent', '');
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        fullResponse += chunk;
+
+        // Update bubble content in real-time
+        bubble.innerHTML = '';
+        fullResponse.split('\n').filter(l => l.trim()).forEach(line => {
+          const p = document.createElement('p');
+          p.innerHTML = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          bubble.appendChild(p);
+        });
+
+        // Scroll to bottom
+        this.conversationContainer.scrollTo({
+          top: this.conversationContainer.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+
+      this.speakText(fullResponse);
+
+      // Auto-reset on goodbye
+      const isGoodbye = /goodbye|have a great day|take care|see you|thank you for calling/i.test(fullResponse);
+      if (isGoodbye) {
+        this.updateStatus('Conversation ended', 'inactive');
+        setTimeout(() => this.startSession(), 3000);
       } else {
-        this.addMessage('agent', data.response || 'Sorry, something went wrong.');
-        this.updateStatus('Error occurred', 'error');
+        this.updateStatus('Ready — type or speak', 'active');
       }
     } catch (err) {
+      this.hideThinking();
       console.error(err);
       this.addMessage('agent', 'Connection error — please try again.');
       this.updateStatus('Connection error', 'error');
@@ -579,7 +615,6 @@ class VoiceAssistant {
     const avatar = document.createElement('div');
     avatar.className = role === 'agent' ? 'assistant-avatar' : 'user-avatar';
 
-    // SVG Icons for avatars
     if (role === 'agent') {
       avatar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`;
     } else {
@@ -589,22 +624,45 @@ class VoiceAssistant {
     const bubble = document.createElement('div');
     bubble.className = `message-bubble ${role}-message`;
 
-    // Format text — handle bullet lines and bold
-    text.split('\n').filter(l => l.trim()).forEach(line => {
-      const p = document.createElement('p');
-      p.innerHTML = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      bubble.appendChild(p);
-    });
+    if (text) {
+      text.split('\n').filter(l => l.trim()).forEach(line => {
+        const p = document.createElement('p');
+        p.innerHTML = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        bubble.appendChild(p);
+      });
+    }
 
     group.appendChild(avatar);
     group.appendChild(bubble);
     this.conversationContainer.appendChild(group);
 
-
     this.conversationContainer.scrollTo({
       top: this.conversationContainer.scrollHeight,
       behavior: 'smooth'
     });
+    return bubble;
+  }
+
+  showThinking() {
+    this.thinkingIndicator = document.createElement('div');
+    this.thinkingIndicator.className = 'thinking-bubble';
+    this.thinkingIndicator.innerHTML = `
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    `;
+    this.conversationContainer.appendChild(this.thinkingIndicator);
+    this.conversationContainer.scrollTo({
+      top: this.conversationContainer.scrollHeight,
+      behavior: 'smooth'
+    });
+  }
+
+  hideThinking() {
+    if (this.thinkingIndicator) {
+      this.thinkingIndicator.remove();
+      this.thinkingIndicator = null;
+    }
   }
 
   updateStatus(text, state) {
