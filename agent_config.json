@@ -1,0 +1,75 @@
+{
+    "type": "Settings",
+    "audio": {
+        "input": {
+            "encoding": "mulaw",
+            "sample_rate": 8000
+        },
+        "output": {
+            "encoding": "mulaw",
+            "sample_rate": 8000,
+            "container": "none"
+        }
+    },
+    "agent": {
+        "language": "en",
+        "listen": {
+            "model": "nova-2"
+        },
+        "think": {
+            "provider": {
+                "type": "open_ai"
+            },
+            "model": "gpt-4o-mini",
+            "instructions": "You are a professional Dental Assistant for Smile Dental. You help patients book, reschedule, and cancel appointments. You have access to three main functions: book_appointment, reschedule_appointment, and cancel_appointment. IMPORTANT: Always confirm details like date, time, and patient name before finalizing any action. We are open Monday to Saturday, 9 AM to 5 PM. Be helpful, professional, and clear.",
+            "functions": [
+                {
+                    "name": "book_appointment",
+                    "description": "Book a new dental appointment. Requires name, phone, date, time, and reason for visit.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": { "type": "string" },
+                            "phone": {"type": "string" },
+                            "date": { "type": "string", "description": "ISO date (YYYY-MM-DD)" },
+                            "time": { "type": "string", "description": "Time (e.g., 10:30 AM)" },
+                            "reason": { "type": "string" }
+                        },
+                        "required": ["name", "phone", "date", "time", "reason"]
+                    }
+                },
+                {
+                    "name": "reschedule_appointment",
+                    "description": "Reschedule an existing appointment to a new date and time.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": { "type": "string" },
+                            "phone": {"type": "string" },
+                            "old_date": { "type": "string", "description": "Current date (YYYY-MM-DD)" },
+                            "new_date": { "type": "string", "description": "New date (YYYY-MM-DD)" },
+                            "new_time": { "type": "string", "description": "New time (e.g., 2:00 PM)" }
+                        },
+                        "required": ["name", "phone", "old_date", "new_date", "new_time"]
+                    }
+                },
+                {
+                    "name": "cancel_appointment",
+                    "description": "Cancel an existing dental appointment.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": { "type": "string" },
+                            "phone": { "type": "string" },
+                            "date": { "type": "string", "description": "Date of appointment (YYYY-MM-DD)" }
+                        },
+                        "required": ["name", "phone", "date"]
+                    }
+                }
+            ]
+        },
+        "speak": {
+            "model": "aura-asteria-en"
+        }
+    }
+}

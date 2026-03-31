@@ -1256,10 +1256,25 @@ class DentalVoiceAgent:
                 self.state["name"], self.state["phone"], self.state["date"]
             )
             if not old: return self.messages.get("appointment_not_found")
+
+            # ── Carry over the reason from the old calendar event ────────
+            # When rescheduling via voice, the user only gives a new date/time.
+            # The reason stays the same as the original booking.
+            reason = self.state.get("reason", "")
+            if not reason:
+                desc = old.get("description", "")
+                for line in desc.splitlines():
+                    if line.lower().startswith("reason:"):
+                        reason = line.split(":", 1)[1].strip()
+                        break
+                self.state["reason"] = reason
+                print(f"[RESCHEDULE] Carrying over reason from old event: '{reason}'")
+            # ─────────────────────────────────────────────────────────────
+
             self.calendar.cancel(old["id"])
             eid = self.calendar.create_appointment(
                 self.state["name"], self.state["phone"], new_start,
-                self.state.get("reason", ""), self.state.get("customer_id")
+                reason, self.state.get("customer_id")
             )
             if eid:
                 self.sheets.update_appointment(
@@ -1336,6 +1351,88 @@ class DentalVoiceAgent:
             return msg.format(lines=", and ".join(lines))
         except Exception as e:
             print(f"[VIEW ERROR] {e}"); return self.messages.get("view_error")
+
+    # ── UNIFIED AGENT BRIDGES ─────────────────────────────────
+    def _book_custom(self, name, phone, date, time, reason):
+        """Helper for Deepgram Agent to book directly via name+phone."""
+        self.state.update({"name": name, "phone": phone, "date": date, "time": time, "reason": reason, "intent": "book"})
+        return self._book()
+
+    def _book_custom_by_id(self, customer_id, date, time, reason):
+        """
+        Book using a verified customer_id (no name/phone needed).
+        Resolves name+phone from Sheets so the calendar entry is fully populated.
+        """
+        customer = self.sheets.get_customer_by_id(customer_id)
+        if not customer:
+            return f"I'm sorry, I could not find a record for customer ID {customer_id}. Please try again."
+        self.state.update({
+            "customer_id": customer_id,
+            "name":        customer.get("name", ""),
+            "phone":       customer.get("phone", ""),
+            "date":        date,
+            "time":        time,
+            "reason":      reason,
+            "intent":      "book",
+            "customer_confirmed": True,
+        })
+        return self._book()
+
+    def _reschedule_custom(self, name, phone, old_date, new_date, new_time):
+        """Helper for Deepgram Agent to reschedule directly via name+phone."""
+        self.state.update({"name": name, "phone": phone, "date": old_date, "new_date": new_date, "new_time": new_time, "intent": "reschedule"})
+        return self._reschedule()
+
+    def _reschedule_custom_by_id(self, customer_id, old_date, new_date, new_time):
+        """Reschedule using a verified customer_id. Carries reason from existing appointment."""
+        customer = self.sheets.get_customer_by_id(customer_id)
+        if not customer:
+            return f"I'm sorry, I could not find a record for customer ID {customer_id}. Please try again."
+
+        # Pre-fetch the reason from Sheets so _reschedule() can carry it over
+        reason = ""
+        try:
+            appts = self.sheets.get_appointments_by_id(customer_id)
+            for a in appts:
+                if a.get("appointment_date") == old_date:
+                    reason = a.get("appointment_reason", "")
+                    break
+            print(f"[RESCHEDULE_BY_ID] Pre-fetched reason='{reason}' for {customer_id} on {old_date}")
+        except Exception as e:
+            print(f"[RESCHEDULE_BY_ID] Could not pre-fetch reason: {e}")
+
+        self.state.update({
+            "customer_id": customer_id,
+            "name":        customer.get("name", ""),
+            "phone":       customer.get("phone", ""),
+            "date":        old_date,
+            "new_date":    new_date,
+            "new_time":    new_time,
+            "reason":      reason,          # carry over from old appointment
+            "intent":      "reschedule",
+            "customer_confirmed": True,
+        })
+        return self._reschedule()
+
+    def _cancel_custom(self, name, phone, date):
+        """Helper for Deepgram Agent to cancel directly via name+phone."""
+        self.state.update({"name": name, "phone": phone, "date": date, "intent": "cancel"})
+        return self._cancel()
+
+    def _cancel_custom_by_id(self, customer_id, date):
+        """Cancel using a verified customer_id."""
+        customer = self.sheets.get_customer_by_id(customer_id)
+        if not customer:
+            return f"I'm sorry, I could not find a record for customer ID {customer_id}. Please try again."
+        self.state.update({
+            "customer_id": customer_id,
+            "name":        customer.get("name", ""),
+            "phone":       customer.get("phone", ""),
+            "date":        date,
+            "intent":      "cancel",
+            "customer_confirmed": True,
+        })
+        return self._cancel()
 
     # ── MAIN LOOP (CLI / voice) ───────────────────────────────
     def run(self):

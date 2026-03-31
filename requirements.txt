@@ -22,3 +22,4 @@ tzdata
 flask-sock
 openai
 python-dotenv
+websockets>=12.0
