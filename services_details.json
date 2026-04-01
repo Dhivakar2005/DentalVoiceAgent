@@ -1,0 +1,486 @@
+{
+    "title": "Complete Dental Services Reference",
+    "total_services": 58,
+    "stages": [
+        {
+            "stage": "Stage 1 - Entry & Diagnosis",
+            "services": [
+                {
+                    "service": "Consultation",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "None",
+                    "clinical_detail": "First visit; dentist reviews chief complaint, symptoms, medical history and existing records."
+                },
+                {
+                    "service": "Basic Oral Exam",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "None",
+                    "clinical_detail": "Visual and tactile inspection of all teeth, gums, tongue, palate and oral soft tissues."
+                },
+                {
+                    "service": "X-ray - Periapical / Bitewing",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Repeat every 1-2 years",
+                    "clinical_detail": "Standard 2-D films to detect cavities, bone levels, root anomalies and impacted teeth."
+                },
+                {
+                    "service": "CBCT 3-D Scan",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "As clinically indicated",
+                    "clinical_detail": "High-resolution cone beam CT used for implant planning, complex surgery or jaw assessment."
+                },
+                {
+                    "service": "Oral Cancer Screening",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Every 6-12 months",
+                    "clinical_detail": "Visual and palpation check of all soft tissues for suspicious lesions, ulcers or lumps."
+                },
+                {
+                    "service": "TMJ Screening",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "As clinically indicated",
+                    "clinical_detail": "Bite analysis, jaw opening range measurement, joint sounds, and muscle palpation assessment."
+                },
+                {
+                    "service": "Saliva / Bacterial Test",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "As clinically indicated",
+                    "clinical_detail": "Identifies high-risk cariogenic bacteria (e.g. S. mutans) to assess personalised decay risk."
+                },
+                {
+                    "service": "Bite Analysis & Occlusion Study",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "As clinically indicated",
+                    "clinical_detail": "Articulating paper, T-scan or mounted study models to map contact points and bite forces."
+                },
+                {
+                    "service": "Pulp Vitality Test",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "As clinically indicated",
+                    "clinical_detail": "Cold spray, heat or electric pulp tester to determine whether the tooth nerve is alive or necrotic."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 2 - Preventive",
+            "services": [
+                {
+                    "service": "Scaling & Polishing (Routine Clean)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Every 6 months",
+                    "clinical_detail": "Ultrasonic + hand scaling removes calculus; rubber-cup polishing removes extrinsic stains."
+                },
+                {
+                    "service": "Fluoride Therapy",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Every 6-12 months",
+                    "clinical_detail": "Varnish, gel or foam applied to enamel to strengthen and reduce caries risk."
+                },
+                {
+                    "service": "Dental Sealants",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Lasts 5-10 years",
+                    "clinical_detail": "Flowable resin painted into pits and fissures of molars; light-cured to create protective barrier."
+                },
+                {
+                    "service": "Pediatric Growth Monitoring",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Every 6 months",
+                    "clinical_detail": "Tracks jaw development, eruption sequence, arch space and early orthodontic signs in children."
+                },
+                {
+                    "service": "Habit Counselling",
+                    "sittings": "1-2 sittings",
+                    "gap_between_visits": "As clinically indicated",
+                    "clinical_detail": "Behavioural advice for thumb sucking, tongue thrusting and mouth breathing to prevent dental damage."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 3 - Basic Treatment",
+            "services": [
+                {
+                    "service": "Composite / Amalgam Filling",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "None - single visit",
+                    "clinical_detail": "Decay removed, cavity shaped and restored with tooth-coloured composite resin or silver amalgam."
+                },
+                {
+                    "service": "Simple Tooth Extraction",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Review at 5-7 days",
+                    "clinical_detail": "Non-surgical removal of a fully erupted tooth under local anaesthesia; socket heals naturally."
+                },
+                {
+                    "service": "Gingivitis Treatment",
+                    "sittings": "1-2 sittings",
+                    "gap_between_visits": "3-5 days between",
+                    "clinical_detail": "Supra-gingival scaling and oral hygiene instruction to reverse early reversible gum inflammation."
+                },
+                {
+                    "service": "Abscess Incision & Drainage (I&D)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Review at 5-7 days",
+                    "clinical_detail": "Scalpel incision releases fluctuant pus; drain placed if needed; antibiotics usually prescribed."
+                },
+                {
+                    "service": "Emergency / Palliative Pain Treatment",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Follow-up as needed",
+                    "clinical_detail": "Temporary relief via sedative dressing, partial pulpotomy or interim filling for acute dental pain."
+                },
+                {
+                    "service": "Cracked Tooth Treatment",
+                    "sittings": "1-2 sittings",
+                    "gap_between_visits": "3-5 days between",
+                    "clinical_detail": "Managed with bonding, crown or splint; final approach determined by crack depth and severity."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 4 - Intermediate Treatment",
+            "services": [
+                {
+                    "service": "Root Canal - Anterior (Front Tooth)",
+                    "sittings": "1-2 sittings",
+                    "gap_between_visits": "2-5 days between",
+                    "clinical_detail": "Single-rooted tooth; access, pulp removal, canal shaping, irrigation and gutta-percha obturation."
+                },
+                {
+                    "service": "Root Canal - Posterior (Back Tooth)",
+                    "sittings": "2-3 sittings",
+                    "gap_between_visits": "3-7 days between",
+                    "clinical_detail": "Multi-rooted molar/premolar; greater complexity; inter-visit calcium hydroxide medicament placed."
+                },
+                {
+                    "service": "Dental Crown - PFM / Full Ceramic / Zirconia",
+                    "sittings": "2 sittings",
+                    "gap_between_visits": "5-10 days (lab turn)",
+                    "clinical_detail": "Visit 1: preparation + impression + temporary crown; Visit 2: cementation of lab-fabricated crown."
+                },
+                {
+                    "service": "Same-Day Crown - CAD/CAM Zirconia",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "None - in-chair milling",
+                    "clinical_detail": "Digital intraoral scan → chairside mill (15-20 min) → glaze → cement - all in one appointment."
+                },
+                {
+                    "service": "Dental Bridge - Conventional 3-Unit",
+                    "sittings": "2-3 sittings",
+                    "gap_between_visits": "5-10 days (lab turn)",
+                    "clinical_detail": "Abutment teeth prepared; impressions taken; temporary bridge fitted; final bridge cemented."
+                },
+                {
+                    "service": "Maryland Bridge (Resin-Bonded)",
+                    "sittings": "2 sittings",
+                    "gap_between_visits": "5-7 days (lab turn)",
+                    "clinical_detail": "Minimal preparation; ceramic or metal-ceramic pontic bonded via thin wings to adjacent teeth."
+                },
+                {
+                    "service": "Inlay / Onlay (Indirect Restoration)",
+                    "sittings": "2 sittings",
+                    "gap_between_visits": "7-10 days (lab turn)",
+                    "clinical_detail": "Conservative alternative to full crown; ceramic or gold restoration cast to fit prepared cavity precisely."
+                },
+                {
+                    "service": "Scaling & Root Planing - Periodontitis",
+                    "sittings": "2-4 sittings",
+                    "gap_between_visits": "2-7 days between",
+                    "clinical_detail": "Quadrant-by-quadrant subgingival debridement; root surfaces planed to remove toxins and calculus."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 5 - Advanced Restorative",
+            "services": [
+                {
+                    "service": "Complete Denture (Full Arch)",
+                    "sittings": "4-5 sittings",
+                    "gap_between_visits": "3-7 days between each",
+                    "clinical_detail": "Primary impression → custom tray → final impression → bite reg → wax try-in → delivery → review."
+                },
+                {
+                    "service": "Partial Denture - Metal / Acrylic",
+                    "sittings": "3-4 sittings",
+                    "gap_between_visits": "3-7 days between each",
+                    "clinical_detail": "Survey/design → impression → framework try-in → teeth try-in → delivery → adjustment."
+                },
+                {
+                    "service": "Dental Implant - Surgical Placement",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Osseointegrate 3-6 months",
+                    "clinical_detail": "Flap raised, site drilled, titanium fixture placed, sutured; healing abutment may be placed same day."
+                },
+                {
+                    "service": "Dental Implant - Crown Restoration",
+                    "sittings": "2 sittings",
+                    "gap_between_visits": "7-10 days (lab turn)",
+                    "clinical_detail": "Abutment connection + impression; lab fabricates crown; final cementation at second visit."
+                },
+                {
+                    "service": "Bone Grafting (Ridge Augmentation)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Heal 3-6 months pre-implant",
+                    "clinical_detail": "Particulate or block graft placed at deficient site; resorbable membrane often used; site left to mature."
+                },
+                {
+                    "service": "Sinus Lift (Maxillary Augmentation)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Heal 4-6 months pre-implant",
+                    "clinical_detail": "Lateral window or crestal approach elevates sinus membrane; graft added to create implant bed."
+                },
+                {
+                    "service": "Full Mouth Rehabilitation (FMR)",
+                    "sittings": "5-10+ sittings",
+                    "gap_between_visits": "Spread over weeks-months",
+                    "clinical_detail": "Combination of crowns, implants, RCTs, grafts and perio therapy to restore entire dentition."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 6 - Cosmetic",
+            "services": [
+                {
+                    "service": "In-Office Teeth Whitening",
+                    "sittings": "1-2 sittings",
+                    "gap_between_visits": "7 days if 2 sessions",
+                    "clinical_detail": "High-concentration peroxide gel activated by LED or laser; each session lasts 45-60 minutes."
+                },
+                {
+                    "service": "At-Home Whitening - Custom Trays",
+                    "sittings": "1 sitting (tray fit)",
+                    "gap_between_visits": "Daily use 1-2 weeks",
+                    "clinical_detail": "Custom trays fabricated from impressions; patient applies prescribed gel at home 30-60 min/day."
+                },
+                {
+                    "service": "Porcelain / Composite Veneers",
+                    "sittings": "2-3 sittings",
+                    "gap_between_visits": "5-7 days (lab turn)",
+                    "clinical_detail": "Enamel prep → impression → temporary veneers → trial seating → final bonding with composite cement."
+                },
+                {
+                    "service": "Dental Bonding",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "None - single visit",
+                    "clinical_detail": "Composite resin shaped directly onto tooth to repair chips, gaps, discolouration or minor misalignment."
+                },
+                {
+                    "service": "Smile Design / Smile Makeover",
+                    "sittings": "2-4 sittings",
+                    "gap_between_visits": "5-10 days between",
+                    "clinical_detail": "Digital imaging + mock-up then combination of whitening, veneers, bonding and gum reshaping."
+                },
+                {
+                    "service": "Gum Contouring (Gingivectomy)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Heal 7-10 days",
+                    "clinical_detail": "Excess gum removed via scalpel or diode laser to expose more tooth crown and improve gummy smile."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 6B - Laser Dentistry (Adjunct)",
+            "services": [
+                {
+                    "service": "Laser Cavity Detection (DIAGNOdent)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "None",
+                    "clinical_detail": "Fluorescence device identifies subsurface decay not visible on X-ray or standard clinical exam."
+                },
+                {
+                    "service": "Laser Cavity Removal (Er:YAG)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "None",
+                    "clinical_detail": "Erbium laser removes caries and shapes cavity; often needs no local anaesthesia; less vibration."
+                },
+                {
+                    "service": "Laser-Assisted Periodontal Therapy",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Heal 5-7 days",
+                    "clinical_detail": "Diode or Nd:YAG laser decontaminates periodontal pockets; used as adjunct to scaling and root planing."
+                },
+                {
+                    "service": "Laser-Accelerated Teeth Whitening",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "7 days if repeated",
+                    "clinical_detail": "High-intensity laser/LED activates whitening gel for faster, more effective in-office bleaching."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 7 - Orthodontic",
+            "services": [
+                {
+                    "service": "Metal / Ceramic Fixed Braces",
+                    "sittings": "1 (placement) + monthly follow-ups",
+                    "gap_between_visits": "Follow-up every 4-6 weeks",
+                    "clinical_detail": "Total active treatment 12-24 months; brackets bonded, wires progressively tightened, debond at end."
+                },
+                {
+                    "service": "Clear Aligners (Invisalign / Similar)",
+                    "sittings": "1 (scan + plan) + follow-ups",
+                    "gap_between_visits": "Follow-up every 6-8 weeks",
+                    "clinical_detail": "New aligner set worn every 1-2 weeks; total duration 6-18 months depending on complexity."
+                },
+                {
+                    "service": "Retainers (Post-Orthodontic)",
+                    "sittings": "1 sitting (fitting)",
+                    "gap_between_visits": "Periodic reviews",
+                    "clinical_detail": "Hawley, Essix clear or fixed bonded retainer; worn indefinitely to maintain corrected positions."
+                },
+                {
+                    "service": "Space Maintainers (Pediatric)",
+                    "sittings": "1-2 sittings",
+                    "gap_between_visits": "5-7 days between",
+                    "clinical_detail": "Band-and-loop or lingual arch placed after premature milk tooth loss to preserve arch space."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 8 - Surgical",
+            "services": [
+                {
+                    "service": "Simple Wisdom Tooth Removal",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Review at 7 days",
+                    "clinical_detail": "Erupted or partially erupted wisdom tooth removed with forceps under local anaesthesia."
+                },
+                {
+                    "service": "Surgical Wisdom Tooth Removal",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Heal 7-10 days",
+                    "clinical_detail": "Gum incised, bone removed if required, tooth sectioned; sutures placed; post-op instructions given."
+                },
+                {
+                    "service": "Apicoectomy (Root-End Surgery)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Review at 7 days",
+                    "clinical_detail": "Flap raised, root tip resected, retrograde filling placed to seal a root canal that has failed."
+                },
+                {
+                    "service": "Frenectomy (Tongue-Tie / Lip-Tie)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Review at 7 days",
+                    "clinical_detail": "Restrictive frenum divided with scalpel or diode laser under local anaesthesia to restore function."
+                },
+                {
+                    "service": "Alveoloplasty (Ridge Reshaping)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Heal 2-4 weeks",
+                    "clinical_detail": "Bone recontouring post-extractions or pre-denture to create a smooth and stable prosthetic ridge."
+                },
+                {
+                    "service": "Orthognathic Surgery (Jaw Correction)",
+                    "sittings": "1 sitting (hospital)",
+                    "gap_between_visits": "Heal 6-12 weeks",
+                    "clinical_detail": "Le Fort I (upper) or BSSO (lower) to correct skeletal jaw discrepancies; performed under GA in hospital."
+                },
+                {
+                    "service": "Incision & Drainage - Dental Abscess",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Review at 5-7 days",
+                    "clinical_detail": "Fluctuant abscess opened with scalpel; drain placed; antibiotics prescribed; follow-up to confirm resolution."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 9 - TMJ & Sleep Dentistry",
+            "services": [
+                {
+                    "service": "TMJ Occlusal Splint Therapy",
+                    "sittings": "2-3 sittings",
+                    "gap_between_visits": "5-7 days between",
+                    "clinical_detail": "Impressions → hard acrylic splint fabricated → fit + adjust → review; worn nightly to offload joint."
+                },
+                {
+                    "service": "TMJ Botox (Botulinum Toxin) Injections",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Repeat every 3-6 months",
+                    "clinical_detail": "Injected into masseter and/or temporalis to reduce clenching forces and relieve TMJ-related pain."
+                },
+                {
+                    "service": "TMJ Surgery (Arthroscopy / Open-Joint)",
+                    "sittings": "1 sitting (hospital)",
+                    "gap_between_visits": "Heal 4-8 weeks",
+                    "clinical_detail": "Reserved for severe internal derangement or joint damage unresponsive to all conservative treatments."
+                },
+                {
+                    "service": "Sleep Apnea Oral Appliance Therapy (OAT)",
+                    "sittings": "2-3 sittings",
+                    "gap_between_visits": "7-10 days between",
+                    "clinical_detail": "Impressions → mandibular advancement device fabricated → fit → titrate; worn nightly to open airway."
+                },
+                {
+                    "service": "Snoring / Mandibular Advancement Device",
+                    "sittings": "2 sittings",
+                    "gap_between_visits": "7 days between",
+                    "clinical_detail": "Similar to sleep apnea OAT; indicated for primary snoring without diagnosed obstructive sleep apnea."
+                },
+                {
+                    "service": "Night Guard / Bruxism Splint",
+                    "sittings": "2 sittings",
+                    "gap_between_visits": "5-7 days (lab turn)",
+                    "clinical_detail": "Impressions → hard acrylic guard fabricated → fitted and adjusted; protects teeth from nocturnal grinding."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 10 - Sedation Dentistry",
+            "services": [
+                {
+                    "service": "Nitrous Oxide (Laughing Gas)",
+                    "sittings": "Each sitting as needed",
+                    "gap_between_visits": "No gap required",
+                    "clinical_detail": "Inhaled anxiolytic via nasal hood; rapid onset/offset; patient can drive home after; titrated to comfort."
+                },
+                {
+                    "service": "Oral Conscious Sedation",
+                    "sittings": "Each sitting as needed",
+                    "gap_between_visits": "No gap required",
+                    "clinical_detail": "Benzodiazepine tablet taken 1 hour pre-appointment; patient remains responsive; must have escort home."
+                },
+                {
+                    "service": "IV Sedation / General Anaesthesia",
+                    "sittings": "Each sitting as needed",
+                    "gap_between_visits": "No gap required",
+                    "clinical_detail": "Administered by anaesthetist; used for complex, lengthy or highly phobic patient treatment; full monitoring."
+                }
+            ]
+        },
+        {
+            "stage": "Stage 11 - Maintenance & Long-Term Care",
+            "services": [
+                {
+                    "service": "Routine Recall Checkup & Cleaning",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Every 6 months",
+                    "clinical_detail": "Exam + X-rays + professional scaling and polishing; essential cornerstone of long-term oral health."
+                },
+                {
+                    "service": "Retainer Review & Adjustment",
+                    "sittings": "1 sitting/review",
+                    "gap_between_visits": "As prescribed",
+                    "clinical_detail": "Checks retainer fit, wear and tooth stability; replaces broken or ill-fitting retainers promptly."
+                },
+                {
+                    "service": "Implant Maintenance & Peri-Implant Check",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Every 6-12 months",
+                    "clinical_detail": "Titanium-safe instruments clean abutments; checks for peri-implantitis, mobility and crown integrity."
+                },
+                {
+                    "service": "Periodontal Supportive Therapy (PST)",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Every 3-4 months",
+                    "clinical_detail": "Frequent recall for patients with periodontal disease history; prevents relapse, monitors pocket depths."
+                },
+                {
+                    "service": "Night Guard / Splint Review",
+                    "sittings": "1 sitting",
+                    "gap_between_visits": "Every 6-12 months",
+                    "clinical_detail": "Checks wear through guard material and occlusal balance; replaces appliance when perforated or distorted."
+                }
+            ]
+        }
+    ]
+}

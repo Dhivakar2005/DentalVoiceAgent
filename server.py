@@ -118,8 +118,40 @@ async def _sts_sender(sts_ws, audio_queue: asyncio.Queue):
         await sts_ws.send(chunk)
 
 
+def _build_spoken_response(func_name: str, result: dict) -> str | None:
+    """
+    Build a short, natural spoken sentence from a tool result.
+    Injected immediately after FunctionCallResponse so the agent speaks
+    without waiting for a new LLM inference cycle (zero silence gap).
+    Returns None only if no injection is needed.
+    """
+    # Every tool returns either {"result": "..."} or {"error": "..."}
+    # Use whichever is present.
+    spoken = result.get("result") or result.get("error")
+
+    # ── verify_patient: override with a cleaner confirmation prompt ───
+    if func_name == "verify_patient":
+        if result.get("found"):
+            name = result.get("name", "")
+            return f"I found your record. You are {name}. Is that correct?"
+        else:
+            return "I was not able to find a record with that number. Would you like to register as a new patient instead?"
+
+    # ── All other tools: use the pre-built natural sentence directly ──
+    # lookup_appointments, book_appointment, reschedule_appointment,
+    # cancel_appointment all already return a full spoken sentence.
+    if spoken:
+        return spoken
+
+    return None   # let Deepgram handle it naturally if nothing to say
+
+
+
 async def _handle_function_calls(decoded: dict, sts_ws):
-    """Execute a FunctionCallRequest received from Deepgram Agent."""
+    """Execute a FunctionCallRequest received from Deepgram Agent.
+    After sending FunctionCallResponse, immediately inject a spoken reply
+    so there is zero silence between tool completion and agent speech.
+    """
     try:
         for func_call in decoded.get("functions", []):
             func_name = func_call["name"]
@@ -137,6 +169,7 @@ async def _handle_function_calls(decoded: dict, sts_ws):
             else:
                 result = {"error": f"Unknown function: {func_name}"}
 
+            # 1. Send the function result back to Deepgram Agent
             response = {
                 "type":    "FunctionCallResponse",
                 "id":      func_id,
@@ -144,9 +177,22 @@ async def _handle_function_calls(decoded: dict, sts_ws):
                 "content": json.dumps(result)
             }
             await sts_ws.send(json.dumps(response))
-            print(f"[TOOL RESULT] {result}")
+            print(f"[TOOL RESULT] {func_name}: {result}")
+
+            # 2. Immediately inject a spoken response — eliminates silence gap
+            spoken = _build_spoken_response(func_name, result)
+            if spoken:
+                inject = {
+                    "type":    "InjectAgentMessage",
+                    "message": spoken
+                }
+                await sts_ws.send(json.dumps(inject))
+                print(f"[INJECT] {func_name} → '{spoken[:80]}...' " if len(spoken) > 80 else f"[INJECT] {func_name} → '{spoken}'")
+
     except Exception as e:
         print(f"[TOOL ERROR] {e}")
+
+
 
 
 async def _sts_receiver(sts_ws, twilio_ws, streamsid_queue: asyncio.Queue):
