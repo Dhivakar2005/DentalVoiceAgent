@@ -1,0 +1,30 @@
+{
+  "CUST_VALIDATE_2026-04-10_10:00 AM": {
+    "confirmation_sent": true
+  },
+  "CUST_SN_TEST_2026-04-05_09:00 AM": {
+    "reminder_sent": true,
+    "reminder_mode": "SHORT_NOTICE"
+  },
+  "CUST_NR_TEST_2026-04-06_11:00 AM": {
+    "reminder_sent": true,
+    "reminder_mode": "NORMAL"
+  },
+  "CUST001_2026-04-03_11:00 AM": {
+    "reminder_sent": true,
+    "reminder_mode": "SHORT_NOTICE"
+  },
+  "CUST001_2026-04-10_predicted": {
+    "prediction_status": "PENDING",
+    "prediction_message_sent": false
+  },
+  "CUST001_2026-04-04_3:00 PM": {
+    "confirmation_sent": true,
+    "reminder_sent": true,
+    "reminder_mode": "NORMAL"
+  },
+  "CUST001_2026-04-11_predicted": {
+    "prediction_status": "PENDING",
+    "prediction_message_sent": false
+  }
+}

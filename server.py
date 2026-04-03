@@ -25,6 +25,12 @@ import base64
 import logging
 import websockets
 
+# ── WhatsApp Scheduling Automation ───────────────────────────────────────────
+from scheduling_automation.automation_engine import AutomationEngine
+from scheduling_automation.sheet_watcher     import SheetWatcher
+from scheduling_automation.scheduler         import build_scheduler
+from scheduling_automation.webhook_server    import register_automation_routes
+
 #  APP SETUP      
 app = Flask(__name__, static_folder='static', template_folder='templates')
 sock = Sock(app)   # flask-sock — Twilio Media Streams WebSocket
@@ -766,11 +772,31 @@ def media_stream(ws):
 #  ENTRY POINT 
 if __name__ == '__main__':
     print("=" * 60)
-    print("SMILE DENTAL - Web Server")
+    print("SMILE DENTAL - Web Server + WhatsApp Automation")
     print("=" * 60)
-    print("\n[WEB] Starting server at http://localhost:5000")
-    print("[TIP] Set FLASK_SECRET_KEY and TWILIO_AUTH_TOKEN in your environment")
-    print("\n" + "=" * 60 + "\n")
 
-    # debug=False in production — debug=True auto-reloads but is unsafe in prod
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # ── START WHATSAPP AUTOMATION ───────────────────────────────────────────
+    print("[WA] Initializing WhatsApp Scheduling Automation...")
+    try:
+        wa_engine = AutomationEngine()
+        wa_watcher = SheetWatcher(
+            on_new=wa_engine.on_new_appointment,
+            on_modified=wa_engine.on_appointment_modified,
+            on_deleted=wa_engine.on_appointment_cancelled
+        )
+        # Register automation webhook routes to this port (5000)
+        register_automation_routes(app, wa_engine)
+        
+        # Start background tasks (sheet polling + reminder scheduler)
+        wa_scheduler = build_scheduler(wa_engine, wa_watcher)
+        wa_scheduler.start()
+        print("[WA] ✅ WhatsApp Automation integration SUCCESSFUL")
+        
+        # Initial scan to check for updates while server was off
+        wa_watcher.check_for_changes()
+    except Exception as e:
+        print(f"[WA] ❌ Automation Startup ERROR: {e}")
+
+    # IMPORTANT: use_reloader=False is required when running APScheduler 
+    # to avoid starting duplicate background jobs.
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)

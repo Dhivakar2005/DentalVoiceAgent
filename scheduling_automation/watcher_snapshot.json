@@ -1,0 +1,146 @@
+{
+  "CUST001_2026-03-23_11:00 AM": {
+    "customer_id": "CUST001",
+    "name": "Dhivakar G",
+    "phone": "8610080257",
+    "appointment_date": "2026-03-23",
+    "appointment_time": "11:00 AM",
+    "appointment_reason": "Root Canal Treatment"
+  },
+  "CUST002_2026-03-24_11:00 AM": {
+    "customer_id": "CUST002",
+    "name": "Rahul",
+    "phone": "9876543210",
+    "appointment_date": "2026-03-24",
+    "appointment_time": "11:00 AM",
+    "appointment_reason": "Teeth whitening"
+  },
+  "CUST003_2026-03-24_10:10 AM": {
+    "customer_id": "CUST003",
+    "name": "Preeti",
+    "phone": "9489362380",
+    "appointment_date": "2026-03-24",
+    "appointment_time": "10:10 AM",
+    "appointment_reason": "Root Canal Treatment"
+  },
+  "CUST003_2026-03-23_10:00 AM": {
+    "customer_id": "CUST003",
+    "name": "Preeti",
+    "phone": "9489362380",
+    "appointment_date": "2026-03-23",
+    "appointment_time": "10:00 AM",
+    "appointment_reason": "Teeth whitening"
+  },
+  "CUST004_2026-03-23_03:00 PM": {
+    "customer_id": "CUST004",
+    "name": "Sam",
+    "phone": "8610080247",
+    "appointment_date": "2026-03-23",
+    "appointment_time": "03:00 PM",
+    "appointment_reason": "Root canal treatment"
+  },
+  "CUST005_2026-03-24_4:00 PM": {
+    "customer_id": "CUST005",
+    "name": "Sathish",
+    "phone": "8610080251",
+    "appointment_date": "2026-03-24",
+    "appointment_time": "4:00 PM",
+    "appointment_reason": "Teeth whitening"
+  },
+  "CUST006_2026-03-24_1:00 PM": {
+    "customer_id": "CUST006",
+    "name": "Sankar",
+    "phone": "8610080252",
+    "appointment_date": "2026-03-24",
+    "appointment_time": "1:00 PM",
+    "appointment_reason": "Root Canal Treatment"
+  },
+  "CUST001_2026-03-23_04:00 PM": {
+    "customer_id": "CUST001",
+    "name": "Dhivakar G",
+    "phone": "8610080257",
+    "appointment_date": "2026-03-23",
+    "appointment_time": "04:00 PM",
+    "appointment_reason": "Teeth whitening"
+  },
+  "CUST007_2026-03-26_3:00 PM": {
+    "customer_id": "CUST007",
+    "name": "Azar",
+    "phone": "8610080253",
+    "appointment_date": "2026-03-26",
+    "appointment_time": "3:00 PM",
+    "appointment_reason": "Root Canal Treatement"
+  },
+  "CUST002_2026-03-27_10:00 AM": {
+    "customer_id": "CUST002",
+    "name": "Rahul",
+    "phone": "9876543210",
+    "appointment_date": "2026-03-27",
+    "appointment_time": "10:00 AM",
+    "appointment_reason": "Teeth Whitening"
+  },
+  "CUST002_2026-03-27_1:00 PM": {
+    "customer_id": "CUST002",
+    "name": "Rahul",
+    "phone": "9876543210",
+    "appointment_date": "2026-03-27",
+    "appointment_time": "1:00 PM",
+    "appointment_reason": "Root Canal Treatment"
+  },
+  "CUST002_2026-03-28_4:00 PM": {
+    "customer_id": "CUST002",
+    "name": "Rahul",
+    "phone": "9876543210",
+    "appointment_date": "2026-03-28",
+    "appointment_time": "4:00 PM",
+    "appointment_reason": "Teeth Whitening"
+  },
+  "CUST002_2026-03-30_3:00 PM": {
+    "customer_id": "CUST002",
+    "name": "Rahul",
+    "phone": "9876543210",
+    "appointment_date": "2026-03-30",
+    "appointment_time": "3:00 PM",
+    "appointment_reason": "Root Canal Treatment"
+  },
+  "CUST002_2026-03-28_11:00 AM": {
+    "customer_id": "CUST002",
+    "name": "Rahul",
+    "phone": "9876543210",
+    "appointment_date": "2026-03-28",
+    "appointment_time": "11:00 AM",
+    "appointment_reason": "Teeth Whitening"
+  },
+  "CUST008_2026-03-30_9:00 AM": {
+    "customer_id": "CUST008",
+    "name": "Santhosh",
+    "phone": "9043898016",
+    "appointment_date": "2026-03-30",
+    "appointment_time": "9:00 AM",
+    "appointment_reason": "Teeth Whitening"
+  },
+  "CUST008_2026-03-30_11:00 AM": {
+    "customer_id": "CUST008",
+    "name": "Santhosh",
+    "phone": "9043898016",
+    "appointment_date": "2026-03-30",
+    "appointment_time": "11:00 AM",
+    "appointment_reason": "Root Canal Treatement"
+  },
+  "CUST001_2026-04-02_11:00 AM": {
+    "customer_id": "CUST001",
+    "name": "Dhivakar G",
+    "phone": "8610080257",
+    "appointment_date": "2026-04-02",
+    "appointment_time": "11:00 AM",
+    "appointment_reason": "cleaning"
+  },
+  "CUST001_2026-04-04_3:00 PM": {
+    "customer_id": "CUST001",
+    "name": "Dhivakar G",
+    "phone": "8610080257",
+    "appointment_date": "2026-04-04",
+    "appointment_time": "3:00 PM",
+    "appointment_reason": "teeth whitening"
+  }
+}

@@ -17,7 +17,7 @@
             "provider": {
                 "type": "deepgram",
                 "model": "nova-3",
-                "endpointing": 250,
+                "endpointing": 100,
                 "keyterms": [
                     "appointment",
                     "cancel",
