@@ -1,22 +1,53 @@
 import os
 from pymongo import MongoClient
+import certifi
 from flask_bcrypt import Bcrypt
 import re
 import jwt
 from datetime import datetime, timedelta
 from thefuzz import fuzz, process
+import structlog
+from dotenv import load_dotenv
+
+# Load environment variables (.env)
+load_dotenv()
+
+logger = structlog.get_logger(__name__)
 
 # MongoDB Configuration
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://dhikrish42:dhivs4321mdb@cluster.gyo49rj.mongodb.net/?appName=Cluster")
 DB_NAME = "dental_assistant"
 
 class DatabaseManager:
     def __init__(self, app=None):
-        self.client = MongoClient(MONGO_URI)
+        self.client = MongoClient(
+            MONGO_URI,
+            tls=True,
+            tlsCAFile=certifi.where()
+        )
+        # Using the specified DB_NAME to ensure consistency
         self.db = self.client[DB_NAME]
         self.users = self.db["users"]
         self.bcrypt = Bcrypt(app) if app else Bcrypt()
         self.jwt_secret = os.environ.get("JWT_SECRET", "super-secret-smile-dental-key-2026")
+        
+        # Enforce Primary Keys (Unique Indexes)
+        try:
+            self.users.create_index("email", unique=True)
+            self.db["customers"].create_index("customer_id", unique=True)
+            # Foregin Key Index for Appointments
+            self.db["appointments"].create_index([("customer_id", 1)])
+            self.db["appointments"].create_index([("date", 1)])
+            self.db["appointments"].create_index([("doctor_id", 1)])
+            
+
+            # Doctors ID unique index
+            self.db["doctors"].create_index("doctor_id", unique=True)
+            
+            logger.info("mongodb_indexes_ensured")
+        except Exception as e:
+            logger.error("index_creation_error", error=str(e))
+
         self.ensure_admin_exists()
 
     def ensure_admin_exists(self):
@@ -31,7 +62,7 @@ class DatabaseManager:
                 "name": "System Admin",
                 "created_at": datetime.now()
             })
-            print(f"[OK] Default admin user created: {admin_email}")
+            logger.info("default_admin_user_created", email=admin_email)
 
     def create_user(self, email, password, name, role="user"):
         if len(password) < 4: return False, "Password must be at least 4 characters"
@@ -59,7 +90,11 @@ class DatabaseManager:
 
     def create_customer(self, customer_id, name, phone, created_at=None):
         customer_id = customer_id.upper() if customer_id else ""
-        customer_data = {"customer_id": customer_id, "name": name, "phone": phone, "created_at": created_at or datetime.now(), "updated_at": datetime.now()}
+        customer_data = {
+            "customer_id": customer_id, "name": name, "phone": phone,
+            "language_preference": "en",     # Default language: English
+            "created_at": created_at or datetime.now(), "updated_at": datetime.now()
+        }
         self.db["customers"].update_one({"customer_id": customer_id}, {"$set": customer_data}, upsert=True)
         return True
 
@@ -86,6 +121,25 @@ class DatabaseManager:
         if name: upd["name"] = name
         if phone: upd["phone"] = phone
         return self.db["customers"].update_one({"customer_id": customer_id.upper()}, {"$set": upd}).modified_count > 0
+
+    def get_customer_language(self, phone: str) -> str:
+        """Return patient's preferred language code ('en', 'ta', 'hi'). Defaults to 'en'."""
+        customer = self.get_customer_by_phone(phone)
+        if customer:
+            return customer.get("language_preference", "en")
+        return "en"
+
+    def update_customer_language(self, phone: str, lang: str) -> bool:
+        """Update a customer's preferred language based on their WhatsApp message language."""
+        if lang not in ("en", "ta", "hi"):
+            return False
+        result = self.db["customers"].update_one(
+            {"phone": phone},
+            {"$set": {"language_preference": lang, "updated_at": datetime.now()}}
+        )
+        if result.modified_count > 0:
+            logger.info("customer_language_updated", phone=phone, lang=lang)
+        return result.modified_count > 0
 
     def get_next_customer_id(self):
         customers = list(self.db["customers"].find({}, {"customer_id": 1}))
@@ -115,3 +169,152 @@ class DatabaseManager:
             {"$set": {"session_id": session_id, "state": state, "updated_at": datetime.now()}},
             upsert=True
         )
+
+    # --- Doctor Management ---
+    
+    def create_doctor(self, doctor_id, name, specialty_name="", service_tags="", role_type="Primary", status="Active"):
+        """Create or update a doctor record."""
+        doctor_data = {
+            "doctor_id": doctor_id,
+            "doctor_name": name,
+            "specialty_name": specialty_name,
+            "service_tags": service_tags, # Comma separated keywords
+            "role_type": role_type,
+            "status": status,
+            "is_available": True,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now()
+        }
+        self.db["doctors"].update_one({"doctor_id": doctor_id}, {"$set": doctor_data}, upsert=True)
+        return True
+
+    def get_doctor_by_id(self, doctor_id):
+        return self.db["doctors"].find_one({"doctor_id": doctor_id})
+
+    def get_active_doctors(self):
+        """Return all active and available doctors."""
+        return list(self.db["doctors"].find({"status": "Active", "is_available": True}))
+
+    def find_doctors_by_reason(self, reason):
+        """Find active doctors whose service_tags match the reason keywords."""
+        if not reason: return self.get_active_doctors()
+        
+        reason_lower = reason.lower()
+        active_doctors = self.get_active_doctors()
+        matched = []
+        
+        for doc in active_doctors:
+            tags = [t.strip().lower() for t in doc.get("service_tags", "").split(",") if t.strip()]
+            if not tags: # If no tags, treat as general
+                matched.append(doc)
+                continue
+            
+            if any(tag in reason_lower for tag in tags):
+                matched.append(doc)
+        
+        # Fallback to all active doctors if no specific match found
+        return matched if matched else active_doctors
+
+    def get_best_doctor(self, reason, date, time):
+        """
+        Intelligent assignment logic:
+        1. Find qualified doctors for the reason.
+        2. Filter those available at the specific time (checked against appointments).
+        3. Pick the one with the lowest appointment load for that day.
+        """
+        qualified = self.find_doctors_by_reason(reason)
+        if not qualified: return None
+        
+        # In a real multi-doctor system, we'd check each doctor's specific busy slots.
+        # For now, we'll find who is NOT busy at this EXACT time.
+        available_doctors = []
+        for doc in qualified:
+            is_busy = self.db["appointments"].find_one({
+                "doctor_id": doc["doctor_id"],
+                "date": date,
+                "time": time,
+                "status": {"$ne": "CANCELLED"}
+            })
+            if not is_busy:
+                available_doctors.append(doc)
+        
+        if not available_doctors: return None
+        
+        # Load balancing: count appointments for the day
+        best_doc = None
+        min_load = float('inf')
+        
+        for doc in available_doctors:
+            load = self.db["appointments"].count_documents({
+                "doctor_id": doc["doctor_id"],
+                "date": date,
+                "status": {"$ne": "CANCELLED"}
+            })
+            if load < min_load:
+                min_load = load
+                best_doc = doc
+        
+        return best_doc
+
+    # --- Appointments Collection (Relational Logic) ---
+
+    def create_appointment(self, customer_id, name, phone, date, time, reason, doctor_id=None, type="BOOKED", status="CONFIRMED"):
+        """
+        Create a new appointment in MongoDB.
+        Enforces a 'Foreign Key' relationship to the customers collection.
+        """
+        cid = customer_id.upper() if customer_id else ""
+        
+        # 1. Foreign Key Verification: Ensure customer exists
+        if not self.get_customer_by_id(cid):
+            logger.warning("auto_creating_missing_customer_for_relational_link", cid=cid)
+            self.create_customer(cid, name, phone)
+
+        # 2. Insert Appointment record
+        appt_data = {
+            "customer_id":    cid,
+            "doctor_id":      doctor_id,
+            "date":           date,
+            "time":           time,
+            "reason":         reason,
+            "type":           type,
+            "status":         status,
+            "created_at":     datetime.now(),
+            "updated_at":     datetime.now()
+        }
+        result = self.db["appointments"].insert_one(appt_data)
+        logger.info("appointment_created_in_db", cid=cid, date=date, type=type, doctor=doctor_id)
+        return result.inserted_id
+
+    def get_appointments_by_customer(self, customer_id):
+        """Find all appointments for a given 'Foreign Key' (customer_id)."""
+        return list(self.db["appointments"].find({"customer_id": customer_id.upper()}))
+
+    def reschedule_appointment(self, customer_id: str, old_date: str, old_time: str, new_date: str, new_time: str) -> bool:
+        """
+        Update ONLY date and time for an appointment matching cid, date, and time.
+        """
+        if not customer_id:
+            return False
+        result = self.db["appointments"].update_one(
+            {
+                "customer_id": customer_id.upper(),
+                "date": old_date,
+                "time": {"$regex": f"^{old_time}$", "$options": "i"}
+            },
+            {"$set": {
+                "date":       new_date,
+                "time":       new_time,
+                "status":     "CONFIRMED",
+                "updated_at": datetime.now()
+            }}
+        )
+        if result.modified_count > 0:
+            logger.info("reschedule_safe_update_db_legacy", cid=customer_id, new_date=new_date, new_time=new_time)
+            return True
+        logger.warning("reschedule_legacy_no_match", cid=customer_id, old_date=old_date, old_time=old_time)
+        return False
+
+    def get_all_appointments(self):
+        """Return all appointments from the database."""
+        return list(self.db["appointments"].find())

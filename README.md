@@ -46,7 +46,7 @@
 | System | Channel | AI/Tech | Purpose |
 |---|---|---|---|
 | **Voice Agent** | Phone (Twilio) | Deepgram Nova-3 STT + GPT-4o-mini + Deepgram Aura-2 TTS | Live AI receptionist for calls |
-| **Web Chat Agent** | Browser | Ollama (phi3:mini) + Regex hybrid engine | Instant 24/7 web booking assistant |
+| **Web Chat Agent** | Browser | Ollama (aya-expanse:8b) + Regex hybrid engine | Instant 24/7 web booking assistant |
 | **WhatsApp Automation** | WhatsApp (Twilio) | Rule-based engine + Google Sheets watcher | Appointment confirmations, reminders, multi-sitting predictions |
 | **Admin Dashboard** | Web | Flask + Google APIs | Real-time clinic management dashboard |
 
@@ -82,7 +82,7 @@ graph TB
     end
 
     subgraph WebAgent["💬 Web Chat Agent (app.py)"]
-        OLLAMA["Ollama phi3:mini\n(LLM)"]
+        OLLAMA["Ollama aya-expanse:8b\n(LLM)"]
         REGEX["Regex Engine\n(<1ms fast path)"]
         STATE["Session State\nManager"]
     end
@@ -144,7 +144,7 @@ A **real-time, zero-silence AI receptionist** that answers the clinic's phone li
 A **hybrid intent engine** for the web booking interface:
 
 - **Fast path (< 1ms):** 15+ regex extractors resolve intent, name, phone, date, time, reason, and customer ID without invoking an LLM.
-- **LLM fallback:** Ollama (phi3:mini) handles ambiguous queries, confirmations, and multilingual inputs.
+- **LLM fallback:** Ollama (aya-expanse:8b) handles ambiguous queries, confirmations, and multilingual inputs.
 - **Streaming SSE:** Responses are streamed token-by-token for a premium chat experience.
 - **Session management:** Each browser session gets a UUID-keyed `WebVoiceAgent` with full state persistence via MongoDB.
 
@@ -197,7 +197,7 @@ A **secure, real-time dashboard** for clinic staff:
 | **Web Framework** | Flask 3.0 + Flask-Sock | HTTP server + WebSocket handler |
 | **STT** | Deepgram Nova-3 | Real-time speech-to-text (< 300ms) |
 | **LLM (Telephony)** | OpenAI GPT-4o-mini | Intent reasoning + function calling on phone |
-| **LLM (Web Chat)** | Ollama phi3:mini | Local LLM for web chat intent extraction |
+| **LLM (Web Chat)** | Ollama aya-expanse:8b | Local LLM for web chat intent extraction |
 | **TTS** | Deepgram Aura-2-Thalia | Natural female voice for TTS output |
 | **Telephony** | Twilio Voice + Media Streams | Inbound calls + µ-law audio WebSocket |
 | **WhatsApp** | Twilio WhatsApp API | Patient messaging & reminders |
@@ -216,48 +216,48 @@ A **secure, real-time dashboard** for clinic staff:
 ```
 DentalVoiceAgent/
 │
-├── server.py                        # 🚀 Main Flask server (HTTP + WebSocket + telephony)
-├── app.py                           # 🤖 DentalVoiceAgent core (web chat + Calendar)
-├── google_sheets_manager.py         # 📊 Google Sheets CRUD (patient CRM)
-├── database_manager.py              # 🍃 MongoDB user auth + JWT
-├── vector_db_manager.py             # 🔍 Vector DB for FAQ retrieval
-├── ingest_logic.py                  # 📥 Ingestion helper for knowledge base
+├ server.py                        # 🚀 Main Flask server (HTTP + WebSocket + telephony)
+├ app.py                           # 🤖 DentalVoiceAgent core (web chat + Calendar)
+├ google_sheets_manager.py         # 📊 Google Sheets CRUD (patient CRM)
+├ database_manager.py              # 🍃 MongoDB user auth + JWT
+├ vector_db_manager.py             # 🔍 Vector DB for FAQ retrieval
+├ ingest_logic.py                  # 📥 Ingestion helper for knowledge base
 │
-├── logic.json                       # ⚙️ Intent patterns + system prompts
-├── services_details.json            # 🦷 Dental services catalog & treatment plans
-├── sheets_config.json               # 🔑 Google Sheets spreadsheet ID config
-├── agent_config.json                # 🤖 Agent-level configuration
-├── credentials.json                 # 🔐 Google OAuth client credentials
-├── token.pickle                     # 🔐 Cached Google OAuth token
+├ logic.json                       # ⚙️ Intent patterns + system prompts
+├ services_details.json            # 🦷 Dental services catalog & treatment plans
+├ sheets_config.json               # 🔑 Google Sheets spreadsheet ID config
+├ agent_config.json                # 🤖 Agent-level configuration
+├ credentials.json                 # 🔐 Google OAuth client credentials
+├ token.pickle                     # 🔐 Cached Google OAuth token
 │
-├── requirements.txt                 # 📦 Core dependencies
-├── .env                             # 🌍 Environment secrets (not committed)
+├ requirements.txt                 # 📦 Core dependencies
+├ .env                             # 🌍 Environment secrets (not committed)
 │
-├── voice_agent/                     # 📞 Telephony voice agent module
-│   ├── dental_config.json           #    Deepgram Agent full config (STT+LLM+TTS+functions)
-│   └── dental_functions.py          #    Tool handlers: verify/book/reschedule/cancel/lookup
+├ voice_agent/                     # 📞 Telephony voice agent module
+│   ├ dental_config.json           #    Deepgram Agent full config (STT+LLM+TTS+functions)
+│   └ dental_functions.py          #    Tool handlers: verify/book/reschedule/cancel/lookup
 │
-├── scheduling_automation/           # 💬 WhatsApp scheduling automation module
-│   ├── automation_engine.py         #    Core business logic router (10 workflows)
-│   ├── sheet_watcher.py             #    Polls Google Sheets for row changes
-│   ├── whatsapp_service.py          #    WhatsApp message templates (Twilio)
-│   ├── future_appointments.py       #    Predicted multi-sitting manager
-│   ├── services_parser.py           #    Resolves future dates from treatment reason
-│   ├── state_store.py               #    Persistent duplicate-protection flags
-│   ├── scheduler.py                 #    APScheduler job definitions
-│   ├── webhook_server.py            #    WhatsApp reply webhook routes
-│   ├── app_scheduler.py             #    Standalone scheduler runner
-│   ├── appointment_state.json       #    StateStore persistent file
-│   └── watcher_snapshot.json        #    SheetWatcher last-seen snapshot
+├ scheduling_automation/           # 💬 WhatsApp scheduling automation module
+│   ├ automation_engine.py         #    Core business logic router (10 workflows)
+│   ├ sheet_watcher.py             #    Polls Google Sheets for row changes
+│   ├ whatsapp_service.py          #    WhatsApp message templates (Twilio)
+│   ├ future_appointments.py       #    Predicted multi-sitting manager
+│   ├ services_parser.py           #    Resolves future dates from treatment reason
+│   ├ state_store.py               #    Persistent duplicate-protection flags
+│   ├ scheduler.py                 #    APScheduler job definitions
+│   ├ webhook_server.py            #    WhatsApp reply webhook routes
+│   ├ app_scheduler.py             #    Standalone scheduler runner
+│   ├ appointment_state.json       #    StateStore persistent file
+│   └ watcher_snapshot.json        #    SheetWatcher last-seen snapshot
 │
-├── templates/
-│   ├── index.html                   # 🌐 Patient-facing chat interface
-│   ├── admin.html                   # 🛡️ Admin dashboard
-│   └── login.html                   # 🔐 Login / signup page
+├ templates/
+│   ├ index.html                   # 🌐 Patient-facing chat interface
+│   ├ admin.html                   # 🛡️ Admin dashboard
+│   └ login.html                   # 🔐 Login / signup page
 │
-└── static/
-    ├── css/style.css                # 🎨 Glassmorphic design system
-    └── js/app.js                    # ⚡ Reactive frontend controllers
+└ static/
+    ├ css/style.css                # 🎨 Glassmorphic design system
+    └ js/app.js                    # ⚡ Reactive frontend controllers
 ```
 
 ---
@@ -271,7 +271,7 @@ Create a `.env` file in the project root with the following variables:
 FLASK_SECRET_KEY=your-secure-random-key
 
 # MongoDB (user authentication)
-MONGO_URI=mongodb://localhost:27017/dental_db
+MONGO_URI=mongodb+srv://dhikrish42:<db_password>@cluster.gyo49rj.mongodb.net/?appName=Cluster
 
 # Deepgram (STT + TTS + Agent)
 DEEPGRAM_API_KEY=your-deepgram-api-key
@@ -300,7 +300,7 @@ TWILIO_SKIP_VALIDATION=true
 
 - Python 3.12+
 - MongoDB (running locally or Atlas)
-- Ollama with `phi3:mini` model
+- Ollama with `aya-expanse:8b` model
 - Google Cloud project with Calendar API + Sheets API enabled
 - Twilio account with a voice number and WhatsApp sandbox
 
@@ -318,7 +318,7 @@ pip install -r scheduling_automation/requirements_scheduler.txt
 
 # 3. Start Ollama and pull the web chat model
 ollama serve
-ollama pull phi3:mini
+ollama pull aya-expanse:8b
 
 # 4. Place credentials.json (Google OAuth) in the project root.
 #    On first run, a browser window will open to authorize Google access.

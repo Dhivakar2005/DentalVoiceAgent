@@ -1,6 +1,6 @@
 """
 webhook_server.py
-─────────────────
+─
 Flask server (port 5001) for WhatsApp Cloud API webhook.
 
 Endpoints:
@@ -12,7 +12,7 @@ Endpoints:
 """
 
 import os
-import logging
+import structlog
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 
@@ -20,7 +20,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "smiledentalwebhook2026")
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 _engine = None   # Global engine reference for the routes
 
@@ -111,7 +111,7 @@ def register_automation_routes(app, engine):
             return jsonify({"status": "ok"}), 200
         return jsonify({"error": "No engine"}), 500
 
-    # ── Health ─────────────────────────────────────────────────────────────────────
+    #  Health ─
     @app.route("/health", methods=["GET"])
     def health():
         return jsonify({

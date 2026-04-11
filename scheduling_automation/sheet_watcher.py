@@ -1,6 +1,6 @@
 """
 sheet_watcher.py
-────────────────
+
 Polls the Customers sheet every 30 seconds.
 Detects new rows, modified rows (date/time changed), and deleted rows.
 Fires events to the automation engine.
@@ -13,6 +13,7 @@ Snapshot format (in-memory + persisted to watcher_snapshot.json):
         "phone": "...",
         "appointment_date": "2026-04-01",
         "appointment_time": "10:00 AM",
+        "appointment_reason": "...",
         "appointment_reason": "..."
     },
     ...
@@ -22,14 +23,14 @@ Snapshot format (in-memory + persisted to watcher_snapshot.json):
 import os
 import json
 import pickle
-import logging
+import structlog
 from typing import Callable, Optional
 from datetime import datetime
 
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 CUSTOMERS_SHEET   = "Customers"
 SNAPSHOT_PATH     = os.path.join(os.path.dirname(__file__), "watcher_snapshot.json")
@@ -67,7 +68,7 @@ class SheetWatcher:
         self.spreadsheet_id = self._load_spreadsheet_id()
         self._snapshot: dict[str, dict] = self._load_snapshot()
 
-    # ── Auth ──────────────────────────────────────────────────────────────────
+    #  Auth 
 
     def _authenticate(self):
         creds = None
@@ -87,7 +88,7 @@ class SheetWatcher:
         with open(SHEETS_CONFIG_PATH, "r") as f:
             return json.load(f)["spreadsheet_id"]
 
-    # ── Snapshot ──────────────────────────────────────────────────────────────
+    #  Snapshot 
 
     def _load_snapshot(self) -> dict:
         if os.path.exists(SNAPSHOT_PATH):
@@ -102,22 +103,23 @@ class SheetWatcher:
         with open(SNAPSHOT_PATH, "w") as f:
             json.dump(self._snapshot, f, indent=2)
 
-    # ── Sheet reader ─────────────────────────────────────────────────────────
+    #  Sheet reader ─
 
-    def _fetch_current_rows(self) -> dict[str, dict]:
+    def _fetch_current_rows(self) -> Optional[dict[str, dict]]:
         """
         Read Customers sheet and return dict keyed by appointment key.
         Also indexed by customer_id for change detection.
+        Returns None if an API error occurs to prevent mass-wiping snapshot.
         """
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"{CUSTOMERS_SHEET}!A:F"
+                range=f"{CUSTOMERS_SHEET}!A:K"
             ).execute()
             raw = result.get("values", [])
         except Exception as e:
             logger.error(f"[WATCHER] Failed to read Customers sheet: {e}")
-            return {}
+            return None
 
         if len(raw) <= 1:
             return {}
@@ -126,6 +128,15 @@ class SheetWatcher:
         for row in raw[1:]:
             if not row or len(row) < 5:
                 continue
+            
+            # Skip PREDICTED rows — unless they are PENDING (manually confirmed or overridden)
+            # Type is Column I (index 8), WhatsApp is Column K (index 10)
+            type_val      = str(row[8]).strip() if len(row) > 8 else "BOOKED"
+            whatsapp_conf = str(row[10]).strip().upper() if len(row) > 10 else ""
+            
+            if type_val == "PREDICTED" and whatsapp_conf != "PENDING":
+                continue
+
             r = {
                 "customer_id":        str(row[0]).strip() if len(row) > 0 else "",
                 "name":               str(row[1]).strip() if len(row) > 1 else "",
@@ -133,13 +144,17 @@ class SheetWatcher:
                 "appointment_date":   str(row[3]).strip() if len(row) > 3 else "",
                 "appointment_time":   str(row[4]).strip() if len(row) > 4 else "",
                 "appointment_reason": str(row[5]).strip() if len(row) > 5 else "",
+                "doctor":             str(row[6]).strip() if len(row) > 6 else "Unassigned",
+                "type":               str(row[8]).strip() if len(row) > 8 else "BOOKED",
+                "status":             str(row[9]).strip().upper() if len(row) > 9 else "BOOKED",
+                "whatsapp_conf":      str(row[10]).strip().upper() if len(row) > 10 else "",
             }
             if r["customer_id"]:
                 key = _make_key(r)
                 current[key] = r
         return current
 
-    # ── Main poll method ──────────────────────────────────────────────────────
+    #  Main poll method 
 
     def check_for_changes(self):
         """
@@ -149,64 +164,94 @@ class SheetWatcher:
         logger.debug("[WATCHER] Polling Customers sheet...")
         current = self._fetch_current_rows()
 
-        # ── Silent Startup Logic ──────────────────────────────────────────────
+        if current is None:
+            logger.warning("[WATCHER] Aborting check_for_changes due to fetch/API error.")
+            return
+
+        #  Silent Startup Logic 
         # If the snapshot is completely empty (first run), we baseline the 
         # current rows without firing 'on_new' events. This avoids 
         # spamming notifications for old historical records.
         if not self._snapshot and current:
-            logger.info(f"[WATCHER] 🤫 First run detected. Baselining {len(current)} existing rows silently.")
-            self._snapshot = current
+            logger.info(f"[WATCHER] 🤫 First run detected. Baselining existing rows silently.")
+            # We baseline everything EXCEPT the pending ones, so they trigger below.
+            self._snapshot = {k:v for k,v in current.items() if v.get("whatsapp_conf") != "PENDING"}
             self._save_snapshot()
-            return
+            # Continue so pending logic below can run
+            pass
 
         prev_keys = set(self._snapshot.keys())
         curr_keys = set(current.keys())
 
-        # ── New rows ─────────────────────────────────────────────────────────
-        new_keys = curr_keys - prev_keys
-        for key in new_keys:
+        #  Detect modifications first 
+        new_keys_set = curr_keys - prev_keys
+        del_keys_set = prev_keys - curr_keys
+        
+        modifications = []
+        for old_key in list(del_keys_set):
+            row = self._snapshot[old_key]
+            cid = row["customer_id"]
+            
+            # Find the corresponding new key for this CID that was just created
+            potential_new_keys = [k for k in new_keys_set if current[k]["customer_id"] == cid]
+            
+            # If there's exactly one deleted row and one new row for this customer, it's a modification
+            potential_old_keys = [k for k in del_keys_set if self._snapshot[k]["customer_id"] == cid]
+            
+            if len(potential_new_keys) == 1 and len(potential_old_keys) == 1:
+                new_key = potential_new_keys[0]
+                new_row = current[new_key]
+                modifications.append((row, new_row))
+                
+                new_keys_set.remove(new_key)
+                del_keys_set.remove(old_key)
+
+        #  Detect fresh PENDING rows (Primary Trigger) ─
+        pending_rows = [r for r in current.values() if r.get("whatsapp_conf") == "PENDING"]
+        
+        for row in pending_rows:
+            key = _make_key(row)
+            logger.info(f"[WATCHER] 🔔 Found PENDING row: {key}")
+            try:
+                self.on_new(row)
+                # Remove from new_keys_set so we don't double-fire
+                if key in new_keys_set:
+                    new_keys_set.remove(key)
+            except Exception as e:
+                logger.error(f"[WATCHER] on_new (PENDING) error: {e}")
+
+        #  Trigger Remaining Callbacks (Shadow/Diff Logic) ─
+        
+        for old_row, new_row in modifications:
+            logger.info(f"[WATCHER] ✏️ Modified appointment: {old_row['customer_id']}")
+            try:
+                self.on_modified(old_row, new_row)
+            except Exception as e:
+                logger.error(f"[WATCHER] on_modified error: {e}")
+
+        for key in new_keys_set:
             row = current[key]
-            logger.info(f"[WATCHER] 🆕 New appointment: {key}")
+            logger.info(f"[WATCHER] 🆕 New appointment (New Key): {key}")
             try:
                 self.on_new(row)
             except Exception as e:
-                logger.error(f"[WATCHER] on_new callback error: {e}")
+                logger.error(f"[WATCHER] on_new error: {e}")
 
-        # ── Deleted rows ──────────────────────────────────────────────────────
-        deleted_keys = prev_keys - curr_keys
-        for key in deleted_keys:
-            row = self._snapshot[key]
-            # Check if it was really deleted (not just moved with a new time/date)
-            # Detect modification: same customer_id with a different key in current
-            cid = row["customer_id"]
-            # Find if this customer_id exists with a different key
-            curr_for_cid = [r for r in current.values() if r["customer_id"] == cid]
-            prev_for_cid = [r for r in self._snapshot.values() if r["customer_id"] == cid]
-
-            if curr_for_cid and len(curr_for_cid) == len(prev_for_cid):
-                # Same customer, different key → it's a modification
-                old_row = prev_for_cid[0]
-                new_row = curr_for_cid[0]
-                mod_key = _make_key(new_row)
-
-                # Only fire if this modified key wasn't already handled as "new"
-                if mod_key not in new_keys:
-                    continue
-
-                logger.info(f"[WATCHER] ✏️ Modified appointment: {cid}")
-                try:
-                    self.on_modified(old_row, new_row)
-                except Exception as e:
-                    logger.error(f"[WATCHER] on_modified callback error: {e}")
-            else:
-                # Truly deleted
+        # Bulk-deletion protection: If more than 2 rows are deleted at once, it's likely a sheet cleanup.
+        if len(del_keys_set) > 2:
+            logger.warning(f"[WATCHER] 🛑 Mass deletion detected ({len(del_keys_set)} rows). Skipping WhatsApp cancellation notices to prevent spam.")
+        else:
+            for key in del_keys_set:
+                row = self._snapshot[key]
                 logger.info(f"[WATCHER] 🗑️ Deleted appointment: {key}")
                 try:
                     self.on_deleted(row)
                 except Exception as e:
                     logger.error(f"[WATCHER] on_deleted callback error: {e}")
 
-        # ── Save new snapshot ─────────────────────────────────────────────────
+        #  Save new snapshot ─
         self._snapshot = current
         self._save_snapshot()
         logger.debug(f"[WATCHER] Snapshot saved ({len(current)} rows).")
+
+

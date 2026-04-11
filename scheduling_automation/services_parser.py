@@ -1,6 +1,6 @@
 """
 services_parser.py
-──────────────────
+
 Reads services_details.json and resolves:
   - Total sittings (always maximum of range)
   - Gap days between visits (midpoint of range)
@@ -30,13 +30,13 @@ Gap rules (midpoint):
 import json
 import re
 import os
-import logging
+import structlog
 from datetime import date, timedelta
 from typing import Optional
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
-# ── Load services JSON ────────────────────────────────────────────────────────
+#  Load services JSON 
 _SERVICES_PATH = os.path.join(os.path.dirname(__file__), "..", "services_details.json")
 
 def _load_services() -> list[dict]:
@@ -52,7 +52,7 @@ def _load_services() -> list[dict]:
 _ALL_SERVICES: list[dict] = _load_services()
 
 
-# ── Parsers ───────────────────────────────────────────────────────────────────
+#  Parsers ─
 
 def parse_sittings(text: str) -> int:
     """
@@ -129,28 +129,96 @@ def parse_gap_days(text: str) -> int:
     return 0
 
 
+
+#  Canonical alias map ─
+# Maps normalised spoken/typed names → exact service name in services_details.json
+# Keys are lowercase. Values must match a service name exactly (case-insensitive check).
+_ALIASES: dict[str, str] = {
+    # Checkup / Preventive
+    "regular checkup":                        "Routine Recall Checkup & Cleaning",
+    "checkup":                                "Routine Recall Checkup & Cleaning",
+    "routine checkup":                        "Routine Recall Checkup & Cleaning",
+    "routine check up":                       "Routine Recall Checkup & Cleaning",
+    "dental checkup":                         "Routine Recall Checkup & Cleaning",
+    "general checkup":                        "Routine Recall Checkup & Cleaning",
+    "cleaning":                               "Scaling & Polishing (Routine Clean)",
+    "scaling":                                "Scaling & Polishing (Routine Clean)",
+    "scaling and polishing":                  "Scaling & Polishing (Routine Clean)",
+    # Root Canal  ("Root Canal Treatment" is now the single canonical service name)
+    "root canal treatment":                   "Root Canal Treatment",
+    "root canal treatement":                  "Root Canal Treatment",  # typo
+    "root canal":                             "Root Canal Treatment",
+    "rct":                                    "Root Canal Treatment",
+    "root canal therapy":                     "Root Canal Treatment",
+    "root canal anterior":                    "Root Canal Treatment",
+    "root canal posterior":                   "Root Canal Treatment",
+    # Smile Design / Cosmetic
+    "smile design":                           "Smile Design / Smile Makeover",
+    "smile makeover":                         "Smile Design / Smile Makeover",
+    "smile designing":                        "Smile Design / Smile Makeover",
+    # Whitening
+    "teeth whitening":                        "In-Office Teeth Whitening",
+    "tooth whitening":                        "In-Office Teeth Whitening",
+    "whitening":                              "In-Office Teeth Whitening",
+    # Filling
+    "filling":                                "Composite / Amalgam Filling",
+    "tooth filling":                          "Composite / Amalgam Filling",
+    "cavity filling":                         "Composite / Amalgam Filling",
+    # Extraction
+    "tooth extraction":                       "Simple Tooth Extraction",
+    "extraction":                             "Simple Tooth Extraction",
+    "tooth removal":                          "Simple Tooth Extraction",
+    # Crown
+    "crown":                                  "Dental Crown - PFM / Full Ceramic / Zirconia",
+    "dental crown":                           "Dental Crown - PFM / Full Ceramic / Zirconia",
+    "cap":                                    "Dental Crown - PFM / Full Ceramic / Zirconia",
+    # Implant
+    "implant":                                "Dental Implant - Surgical Placement",
+    "dental implant":                         "Dental Implant - Surgical Placement",
+    # Braces
+    "braces":                                 "Metal / Ceramic Fixed Braces",
+    "orthodontic treatment":                  "Metal / Ceramic Fixed Braces",
+    # Wisdom tooth
+    "wisdom tooth removal":                   "Simple Wisdom Tooth Removal",
+    "wisdom tooth extraction":                "Surgical Wisdom Tooth Removal",
+}
+
+
 def _match_service(reason: str) -> Optional[dict]:
     """
     Fuzzy-match a treatment reason to a service entry.
-    Strategy: lowercase substring matching with word overlap scoring.
+
+    Priority:
+      1. Exact alias table lookup  (handles common spoken names + typos)
+      2. Direct substring match    (reason ⊆ svc_name or svc_name ⊆ reason)
+      3. Word-overlap scoring      (≥ 1 shared word)
     """
     if not reason:
         return None
 
     reason_lower = reason.lower().strip()
-    reason_words = set(reason_lower.split())
 
+    #  Priority 1: Alias table ─
+    alias_target = _ALIASES.get(reason_lower)
+    if alias_target:
+        for svc in _ALL_SERVICES:
+            if svc.get("service", "").lower() == alias_target.lower():
+                logger.info("[PARSER] Alias matched '%s' -> '%s'", reason, svc['service'])
+                return svc
+
+    reason_words = set(reason_lower.split())
     best_score = 0
     best_service = None
 
     for svc in _ALL_SERVICES:
         svc_name = svc.get("service", "").lower()
 
-        # Direct substring match → score 100
+        #  Priority 2: Direct substring match 
         if reason_lower in svc_name or svc_name in reason_lower:
+            logger.info("[PARSER] Substring matched '%s' -> '%s'", reason, svc['service'])
             return svc
 
-        # Word overlap scoring
+        #  Priority 3: Word overlap scoring 
         svc_words = set(svc_name.split())
         overlap = len(reason_words & svc_words)
         if overlap > best_score:
@@ -158,10 +226,10 @@ def _match_service(reason: str) -> Optional[dict]:
             best_service = svc
 
     if best_score >= 1:
-        logger.info(f"[PARSER] Matched '{reason}' → '{best_service['service']}' (score={best_score})")
+        logger.info("[PARSER] Word-overlap matched '%s' -> '%s' (score=%d)", reason, best_service['service'], best_score)
         return best_service
 
-    logger.warning(f"[PARSER] No match found for reason: '{reason}' — using defaults (1 sitting)")
+    logger.warning("[PARSER] No match found for reason: '%s' -- using defaults (1 sitting)", reason)
     return None
 
 
@@ -218,7 +286,7 @@ def calculate_future_dates(base_date: date, total_sittings: int, gap_days: int) 
     return future_dates
 
 
-# ── Convenience one-shot function ─────────────────────────────────────────────
+#  Convenience one-shot function ─
 
 def get_future_dates_for_reason(reason: str, base_date_str: str) -> dict:
     """

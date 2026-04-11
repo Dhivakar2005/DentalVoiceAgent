@@ -2,14 +2,19 @@ import os
 import requests
 import numpy as np
 from pymongo import MongoClient
+import certifi
 from dotenv import load_dotenv
 from typing import List, Dict, Any
 
+import structlog
+
 load_dotenv()
+
+logger = structlog.get_logger(__name__)
 
 class OllamaEmbeddingFunction:
     """Custom embedding function to use Ollama's embeddings API."""
-    def __init__(self, model_name: str = "phi3:mini", base_url: str = "http://localhost:11434"):
+    def __init__(self, model_name: str = "aya-expanse:8b", base_url: str = "http://localhost:11434"):
         self.model_name = model_name
         self.base_url = base_url
 
@@ -23,8 +28,8 @@ class OllamaEmbeddingFunction:
             resp.raise_for_status()
             return resp.json()["embedding"]
         except Exception as e:
-            print(f"[ERROR] Ollama Embedding Error: {e}")
-            return [0.0] * 3072  # phi3:mini default size
+            logger.error("ollama_embedding_error", error=str(e))
+            return [0.0] * 4096  # aya-expanse:8b (Llama 3 based) default size
 
 class VectorDBManager:
     _instance = None # Singleton
@@ -39,12 +44,16 @@ class VectorDBManager:
         if self._initialized: return
         
         # MongoDB Configuration
-        self.mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+        self.mongo_uri = os.getenv("MONGO_URI", "mongodb+srv://dhikrish42:dhivs4321mdb@cluster.gyo49rj.mongodb.net/?appName=Cluster")
         self.db_name   = "dental_assistant"
         self.col_name  = "vector_faq"
         
-        self.client = MongoClient(self.mongo_uri)
-        self.db     = self.client[self.db_name]
+        self.client = MongoClient(
+            self.mongo_uri,
+            tls=True,
+            tlsCAFile=certifi.where()
+        )
+        self.db         = self.client[self.db_name]
         self.collection = self.db[self.col_name]
         
         self.embedding_fn = OllamaEmbeddingFunction()
@@ -77,7 +86,7 @@ class VectorDBManager:
         
         if mongo_docs:
             self.collection.insert_many(mongo_docs)
-            print(f"[VDB] Added {len(mongo_docs)} documents to MongoDB.")
+            logger.info("added_documents_to_mongodb", num_docs=len(mongo_docs))
 
     def query(self, text: str, n_results: int = 3) -> Dict[str, Any]:
         """Performs a vector search using Optimized NumPy Cosine Similarity."""
@@ -122,9 +131,9 @@ class VectorDBManager:
                 context_parts.append(f"Result {i+1}: {doc}")
             return "\n\n".join(context_parts)
         except Exception as e:
-            print(f"[RAG] Context retrieval failed: {e}")
+            logger.error("context_retrieval_failed", error=str(e))
             return ""
 
 if __name__ == "__main__":
     vdb = VectorDBManager()
-    print("Vector DB initialized with MongoDB.")
+    logger.info("vector_db_initialized")

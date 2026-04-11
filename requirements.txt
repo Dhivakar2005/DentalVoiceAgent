@@ -23,3 +23,8 @@ flask-sock
 openai
 python-dotenv
 websockets>=12.0
+structlog>=24.0.0
+colorama>=0.4.6
+
+# Multilingual support
+langdetect>=1.0.9

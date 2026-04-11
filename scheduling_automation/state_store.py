@@ -1,6 +1,6 @@
 """
 state_store.py
-──────────────
+
 Persistent per-appointment state flags for Smile Dental automation.
 
 Prevents duplicate WhatsApp messages across restarts by tracking:
@@ -18,10 +18,10 @@ Example:
 
 import os
 import json
-import logging
+import structlog
 from typing import Optional
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 STATE_PATH = os.path.join(os.path.dirname(__file__), "appointment_state.json")
 
@@ -35,7 +35,7 @@ class StateStore:
     def __init__(self):
         self._data: dict = self._load()
 
-    # ── I/O ───────────────────────────────────────────────────────────────────
+    #  I/O ─
 
     def _load(self) -> dict:
         if os.path.exists(STATE_PATH):
@@ -53,13 +53,13 @@ class StateStore:
         except Exception as e:
             logger.error(f"[STATE] Failed to save state: {e}")
 
-    # ── Key builder ───────────────────────────────────────────────────────────
+    #  Key builder ─
 
     @staticmethod
     def make_key(customer_id: str, date: str, time: str) -> str:
         return f"{customer_id}_{date}_{time}"
 
-    # ── Get helpers ───────────────────────────────────────────────────────────
+    #  Get helpers ─
 
     def _get_entry(self, key: str) -> dict:
         return self._data.get(key, {})
@@ -81,7 +81,7 @@ class StateStore:
         """Returns PENDING, CONFIRMED, DECLINED, or '' if unknown."""
         return self._get_entry(key).get("prediction_status", "")
 
-    # ── Set helpers ───────────────────────────────────────────────────────────
+    #  Set helpers ─
 
     def set_confirmation_sent(self, key: str):
         if key not in self._data:
@@ -138,3 +138,10 @@ class StateStore:
         if stale:
             self._save()
             logger.info(f"[STATE] 🧹 Purged {len(stale)} stale state entries.")
+
+    def clear_state(self, key: str):
+        """Manually clear a specific state (e.g., when an appointment is explicitly cancelled)."""
+        if key in self._data:
+            del self._data[key]
+            self._save()
+            logger.debug(f"[STATE] 🗑️ Cleared state for {key}")

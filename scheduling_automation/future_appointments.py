@@ -1,57 +1,51 @@
 """
 future_appointments.py
-──────────────────────
-Manages the Future_Appointments sheet tab in the existing
-Dental_Customer_Database Google Spreadsheet.
 
-Sheet columns:
-  A: Customer ID
-  B: Name
-  C: Phone Number
-  D: Appointment Date       (first/current visit date)
-  E: Appointment Time
-  F: Appointment Reason
-  G: Future_Appointment1
-  H: Future_Appointment2
-  I: Future_Appointment3
-  ...  (dynamically expanded based on total sittings)
+Manages the unified tracking in the Customers sheet.
+All appointments (BOOKED and PREDICTED) live in the Customers sheet.
 
-Rules:
-  - Do NOT overwrite a confirmed future appointment date.
-  - A confirmed date is one that has been moved to the Customers sheet
-    (it will be absent from its column when confirmed).
-  - When deleting a cancelled appointment, remove the entire row.
+Sheet columns (A–K):
+  A: Customer ID             (0)
+  B: Name                    (1)
+  C: Phone Number            (2)
+  D: Appt Date               (3)  (The ORIGINAL visit date)
+  E: Appt Time               (4)  (The ORIGINAL visit time)
+  F: Appointment Reason      (5)
+  G: Doctor                  (6)  (Auto-assigned)
+  H: Future Appt Date        (7)  (The date for THIS visit: Booker or Predicted)
+  I: Type                    (8)  (BOOKED | PREDICTED)
+  J: Status                  (9)  (CONFIRMED | DECLINED | PENDING | MISSED | COMPLETED)
+  K: WhatsApp Conf           (10) (PENDING | SENT)
 """
 
 import os
 import json
 import pickle
-import logging
-from datetime import datetime, date, timedelta
+import structlog
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from typing import Optional
+import sys
+
+# Add root to sys.path to import database_manager
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+try:
+    from database_manager import DatabaseManager
+except ImportError:
+    DatabaseManager = None
 
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 TIMEZONE = "Asia/Kolkata"
-FUTURE_SHEET_NAME = "Future_Appointments"
+CUSTOMERS_SHEET_NAME = "Customers"
 SHEETS_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "sheets_config.json")
 TOKEN_PATH = os.path.join(os.path.dirname(__file__), "..", "token.pickle")
 CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), "..", "credentials.json")
 
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets"
-]
-
-# Base headers (columns A–F fixed, G+ are dynamic future slots)
-BASE_HEADERS = [
-    "Customer ID", "Name", "Phone Number",
-    "Appointment Date", "Appointment Time", "Appointment Reason"
-]
-MAX_FUTURE_COLS = 10   # Support up to 10 future appointments
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 
 class FutureAppointmentsManager:
@@ -59,9 +53,9 @@ class FutureAppointmentsManager:
     def __init__(self):
         self.service = self._authenticate()
         self.spreadsheet_id = self._load_spreadsheet_id()
-        self._ensure_future_sheet()
+        self.db = DatabaseManager() if DatabaseManager else None
 
-    # ── Auth ──────────────────────────────────────────────────────────────────
+    #  Auth 
 
     def _authenticate(self):
         """Re-use existing token.pickle for authentication."""
@@ -76,111 +70,25 @@ class FutureAppointmentsManager:
                 with open(TOKEN_PATH, "wb") as f:
                     pickle.dump(creds, f)
             else:
-                raise RuntimeError(
-                    "Google Sheets credentials not found or expired. "
-                    "Please run the main app first to generate token.pickle."
-                )
+                raise RuntimeError("Google Sheets credentials not found. Run main app first.")
         return build("sheets", "v4", credentials=creds)
 
     def _load_spreadsheet_id(self) -> str:
         """Load spreadsheet ID from sheets_config.json."""
-        if not os.path.exists(SHEETS_CONFIG_PATH):
-            raise FileNotFoundError(f"sheets_config.json not found at {SHEETS_CONFIG_PATH}")
         with open(SHEETS_CONFIG_PATH, "r") as f:
-            config = json.load(f)
-        sid = config.get("spreadsheet_id")
-        if not sid:
-            raise ValueError("spreadsheet_id missing in sheets_config.json")
-        logger.info(f"[FA] Using spreadsheet: {sid}")
-        return sid
+            return json.load(f)["spreadsheet_id"]
 
-    # ── Sheet Init ────────────────────────────────────────────────────────────
-
-    def _ensure_future_sheet(self):
-        """Create Future_Appointments sheet if it doesn't already exist."""
-        try:
-            meta = self.service.spreadsheets().get(
-                spreadsheetId=self.spreadsheet_id
-            ).execute()
-            existing = [s["properties"]["title"] for s in meta.get("sheets", [])]
-
-            if FUTURE_SHEET_NAME not in existing:
-                body = {"requests": [{"addSheet": {"properties": {"title": FUTURE_SHEET_NAME}}}]}
-                self.service.spreadsheets().batchUpdate(
-                    spreadsheetId=self.spreadsheet_id, body=body
-                ).execute()
-                self._write_headers()
-                logger.info(f"[FA] Created sheet: {FUTURE_SHEET_NAME}")
-            else:
-                logger.info(f"[FA] Sheet '{FUTURE_SHEET_NAME}' already exists.")
-        except Exception as e:
-            logger.error(f"[FA] Error ensuring future sheet: {e}")
-            raise
-
-    def _write_headers(self):
-        """Write base + dynamic future appointment headers."""
-        future_headers = [f"Future_Appointment{i}" for i in range(1, MAX_FUTURE_COLS + 1)]
-        all_headers = BASE_HEADERS + future_headers
-        self.service.spreadsheets().values().update(
-            spreadsheetId=self.spreadsheet_id,
-            range=f"{FUTURE_SHEET_NAME}!A1",
-            valueInputOption="RAW",
-            body={"values": [all_headers]}
-        ).execute()
-
-    # ── Sheet ID helper ───────────────────────────────────────────────────────
-
-    def _get_sheet_gid(self) -> int:
-        """Return the GID (sheetId) of the Future_Appointments sheet."""
-        meta = self.service.spreadsheets().get(spreadsheetId=self.spreadsheet_id).execute()
-        for s in meta.get("sheets", []):
-            if s["properties"]["title"] == FUTURE_SHEET_NAME:
-                return s["properties"]["sheetId"]
-        return 0
-
-    # ── Read helpers ──────────────────────────────────────────────────────────
+    #  Read helpers 
 
     def _read_all_rows(self) -> list[list]:
-        """Read all rows (including header) from Future_Appointments."""
+        """Read all rows (including header) from Customers sheet."""
         result = self.service.spreadsheets().values().get(
             spreadsheetId=self.spreadsheet_id,
-            range=f"{FUTURE_SHEET_NAME}!A:Z"
+            range=f"{CUSTOMERS_SHEET_NAME}!A:K"
         ).execute()
         return result.get("values", [])
 
-    def _find_row_index(self, customer_id: str, rows: list[list]) -> Optional[int]:
-        """
-        Return 1-based row index for customer_id, or None.
-        Row 1 = header, data starts at row 2.
-        """
-        cid = str(customer_id).strip().upper()
-        for i, row in enumerate(rows[1:], start=2):
-            if row and str(row[0]).strip().upper() == cid:
-                return i
-        return None
-
-    # ── Public API ────────────────────────────────────────────────────────────
-
-    def get_future_row(self, customer_id: str) -> Optional[dict]:
-        """
-        Return the Future_Appointments row for customer_id as a dict, or None.
-        """
-        rows = self._read_all_rows()
-        idx = self._find_row_index(customer_id, rows)
-        if idx is None:
-            return None
-        row = rows[idx - 1]  # 0-indexed
-        result = {
-            "customer_id":        row[0] if len(row) > 0 else "",
-            "name":               row[1] if len(row) > 1 else "",
-            "phone":              row[2] if len(row) > 2 else "",
-            "appointment_date":   row[3] if len(row) > 3 else "",
-            "appointment_time":   row[4] if len(row) > 4 else "",
-            "appointment_reason": row[5] if len(row) > 5 else "",
-            "future_dates":       [row[i] for i in range(6, len(row)) if len(row) > i and row[i]],
-            "_row_index":         idx
-        }
-        return result
+    #  Public API 
 
     def upsert_future_row(
         self,
@@ -190,172 +98,209 @@ class FutureAppointmentsManager:
         appt_date: str,
         appt_time: str,
         reason: str,
-        future_dates: list[str]
+        future_dates: list[str],
+        doctor_name: str = "Unassigned",
+        doctor_id: str = None
     ) -> bool:
         """
-        Insert or update row for customer_id.
-        - If existing row exists: only fill EMPTY future columns (never overwrite confirmed dates).
-        - If no existing row: insert a new one.
+        Append predicted future slots.
+        Col D/E = Original Date/Time. Col H = Predicted Date. Col L = UUID.
+
+        DUPLICATE PROTECTION:
+          Before creating a PREDICTED row for a given date, we check:
+            1. Is there already a PREDICTED row for this CID + date? (skip)
+            2. Is there already a BOOKED row for this CID + same treatment + date? (merge/skip)
         """
         try:
             rows = self._read_all_rows()
-            idx = self._find_row_index(customer_id, rows)
+            new_rows = []
 
-            # Build base + future columns
-            base_values = [customer_id, name, phone, appt_date, appt_time, reason]
-            future_cols = [""] * MAX_FUTURE_COLS
+            for fd in future_dates:
+                # Don't predict for the same date as the original appointment
+                if fd == appt_date:
+                    logger.info("[FA] Skipping prediction for original date", date=fd, customer_id=customer_id)
+                    continue
 
-            for i, fd in enumerate(future_dates[:MAX_FUTURE_COLS]):
-                future_cols[i] = fd
+                exists = False
+                for r in rows[1:]:
+                    if len(r) < 9 or str(r[0]) != customer_id:
+                        continue
 
-            full_row = base_values + future_cols
+                    row_visit_date  = str(r[3]).strip()   # Col D
+                    future_date_val = str(r[7]).strip()   # Col H
+                    type_val        = str(r[8]).strip()   # Col I
+                    reason_val      = str(r[5]).strip().lower()
 
-            if idx is None:
-                # ── INSERT new row ─────────────────────────────────────────
+                    # Case 1a: PREDICTED row where Col H == fd (pre-normalization state)
+                    if type_val == "PREDICTED" and future_date_val == fd:
+                        logger.info("[FA] Prediction already exists (pre-norm), skipping",
+                                    customer_id=customer_id, date=fd)
+                        exists = True
+                        break
+
+                    # Case 1b: PREDICTED row where Col D == fd (post-normalization state)
+                    # normalize_chains moves sitting date from Col H → Col D and sets Col H = N/A.
+                    # Without this check, upsert would create a duplicate when called again.
+                    if type_val == "PREDICTED" and row_visit_date == fd:
+                        logger.info("[FA] Prediction already exists (post-norm), skipping",
+                                    customer_id=customer_id, date=fd)
+                        exists = True
+                        break
+
+                    # Case 2: A BOOKED row already covers this future date + same treatment
+                    # (prediction would be a duplicate of a confirmed booking)
+                    if type_val == "BOOKED" and row_visit_date == fd and reason_val == reason.lower():
+                        logger.info("prediction_merged_into_booking",
+                                    customer_id=customer_id, date=fd, treatment=reason)
+                        exists = True
+                        break
+
+                if not exists:
+                    # 11-column structure: A-K
+                    new_rows.append([
+                        customer_id, name, phone,
+                        appt_date, appt_time, reason,
+                        doctor_name, fd,
+                        "PREDICTED", "PENDING", "PENDING"
+                    ])
+
+                    # Mirror to MongoDB
+                    if self.db:
+                        self.db.create_appointment(
+                            customer_id=customer_id,
+                            name=name,
+                            phone=phone,
+                            date=fd,
+                            time="10:00 AM",
+                            reason=reason,
+                            doctor_id=doctor_id,
+                            type="PREDICTED",
+                            status="PENDING"
+                        )
+
+            if new_rows:
                 self.service.spreadsheets().values().append(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f"{FUTURE_SHEET_NAME}!A:Z",
+                    range=f"{CUSTOMERS_SHEET_NAME}!A1:K1",
                     valueInputOption="RAW",
                     insertDataOption="INSERT_ROWS",
-                    body={"values": [full_row]}
+                    body={"values": new_rows}
                 ).execute()
-                logger.info(f"[FA] ✅ Inserted future row for {customer_id}")
-            else:
-                # ── UPDATE existing row — only fill empty future slots ──────
-                existing = rows[idx - 1]
-                # Extend existing row to full width
-                while len(existing) < len(full_row):
-                    existing.append("")
-
-                for i in range(6, 6 + MAX_FUTURE_COLS):
-                    col_i = i - 6  # 0-based future col index
-                    if col_i >= len(future_cols):
-                        break
-                    # Only update if cell is currently empty
-                    if not existing[i]:
-                        existing[i] = future_cols[col_i]
-
-                # Also update base columns (date/time/reason may have changed)
-                existing[3] = appt_date
-                existing[4] = appt_time
-                existing[5] = reason
-
-                self.service.spreadsheets().values().update(
-                    spreadsheetId=self.spreadsheet_id,
-                    range=f"{FUTURE_SHEET_NAME}!A{idx}",
-                    valueInputOption="RAW",
-                    body={"values": [existing]}
-                ).execute()
-                logger.info(f"[FA] ✅ Updated future row for {customer_id} at row {idx}")
+                logger.info(f"[FA] Added {len(new_rows)} predictions for {customer_id}")
 
             return True
         except Exception as e:
-            logger.error(f"[FA] ❌ Error upserting future row: {e}")
+            logger.error(f"[FA] Error upserting predictions: {e}")
             return False
 
-    def delete_future_row(self, customer_id: str) -> bool:
-        """Delete the entire Future_Appointments row for customer_id."""
+    def delete_future_row(
+        self,
+        customer_id: str,
+        appt_date: str = "",
+        reason: str = ""
+    ) -> bool:
+        """
+        Delete PREDICTED/PENDING rows for a customer.
+
+        Scoped deletion (recommended): pass appt_date + reason.
+          → Only removes predictions whose Col D (original appt date)
+            AND Col F (reason) match the cancelled appointment.
+
+        Fallback (legacy): omit appt_date / reason.
+          → Removes ALL PREDICTED/PENDING rows for the customer.
+            Use this ONLY when the entire customer record is wiped.
+        """
         try:
             rows = self._read_all_rows()
-            idx = self._find_row_index(customer_id, rows)
-            if idx is None:
-                logger.warning(f"[FA] No future row found for {customer_id} — nothing to delete.")
-                return True   # Idempotent
+            to_delete = []
 
-            sheet_gid = self._get_sheet_gid()
-            requests = [{
-                "deleteDimension": {
-                    "range": {
-                        "sheetId": sheet_gid,
-                        "dimension": "ROWS",
-                        "startIndex": idx - 1,
-                        "endIndex": idx
-                    }
-                }
-            }]
+            scoped = bool(appt_date and reason)  # True = targeted delete
+            reason_lower = reason.strip().lower() if reason else ""
+
+            for i, r in enumerate(rows[1:], start=2):
+                # CID(0), OrigApptDate(3), Reason(5), Type(8), Status(9)
+                if len(r) < 10:
+                    continue
+                if str(r[0]) != customer_id:
+                    continue
+                if r[8] != "PREDICTED" or r[9] != "PENDING":
+                    continue
+
+                if scoped:
+                    # Only delete rows that belong to THIS specific treatment plan
+                    row_orig_date = str(r[3]).strip()
+                    row_reason    = str(r[5]).strip().lower()
+                    if row_orig_date != appt_date or row_reason != reason_lower:
+                        continue  # belongs to a different appointment — keep it
+
+                to_delete.append(i)
+
+            if not to_delete:
+                return True
+
+            meta = self.service.spreadsheets().get(spreadsheetId=self.spreadsheet_id).execute()
+            sheet_gid = 0
+            for s in meta.get("sheets", []):
+                if s["properties"]["title"] == CUSTOMERS_SHEET_NAME:
+                    sheet_gid = s["properties"]["sheetId"]
+                    break
+
+            requests = [
+                {"deleteDimension": {"range": {
+                    "sheetId": sheet_gid,
+                    "dimension": "ROWS",
+                    "startIndex": idx - 1,
+                    "endIndex": idx
+                }}}
+                for idx in sorted(to_delete, reverse=True)
+            ]
             self.service.spreadsheets().batchUpdate(
                 spreadsheetId=self.spreadsheet_id,
                 body={"requests": requests}
             ).execute()
-            logger.info(f"[FA] ✅ Deleted future row for {customer_id}")
+
+            scope_info = f"appt_date={appt_date}, reason={reason}" if scoped else "ALL"
+            logger.info(f"[FA] Deleted {len(to_delete)} predictions for {customer_id} [{scope_info}]")
             return True
         except Exception as e:
-            logger.error(f"[FA] ❌ Error deleting future row: {e}")
+            logger.error(f"[FA] Error deleting future rows: {e}")
             return False
 
-    def clear_confirmed_future_date(self, customer_id: str, confirmed_date: str) -> bool:
-        """
-        Remove a specific future date from the row (after patient replies YES).
-        Clears the cell that matches confirmed_date.
-        """
-        try:
-            rows = self._read_all_rows()
-            idx = self._find_row_index(customer_id, rows)
-            if idx is None:
-                return False
-
-            row = rows[idx - 1]
-            updated = False
-            for i in range(6, len(row)):
-                if str(row[i]).strip() == str(confirmed_date).strip():
-                    row[i] = ""
-                    updated = True
-                    break
-
-            if not updated:
-                logger.warning(f"[FA] Date {confirmed_date} not found in row for {customer_id}")
-                return False
-
-            self.service.spreadsheets().values().update(
-                spreadsheetId=self.spreadsheet_id,
-                range=f"{FUTURE_SHEET_NAME}!A{idx}",
-                valueInputOption="RAW",
-                body={"values": [row]}
-            ).execute()
-            logger.info(f"[FA] ✅ Cleared confirmed date {confirmed_date} for {customer_id}")
-            return True
-        except Exception as e:
-            logger.error(f"[FA] ❌ Error clearing confirmed date: {e}")
-            return False
+    def delete_all_future_rows(self, customer_id: str) -> bool:
+        """Delete ALL PREDICTED/PENDING rows for a customer (no scope filter)."""
+        return self.delete_future_row(customer_id)
 
     def get_all_pending_future_appointments(self) -> list[dict]:
-        """
-        Return all non-empty future appointment slots across all customers.
-        Used by scheduler to check for 1.5-day reminders.
-
-        Returns list of:
-          {
-            "customer_id": str,
-            "name": str,
-            "phone": str,
-            "reason": str,
-            "future_date": str,
-            "future_col_index": int   # 0-based (0 = Appointment1)
-          }
-        """
+        """Return all rows where Type=PREDICTED and Status=PENDING. Uses Col G for the date."""
         try:
             rows = self._read_all_rows()
             pending = []
-            for row in rows[1:]:   # skip header
-                if not row or len(row) < 7:
-                    continue
-                cid    = row[0] if len(row) > 0 else ""
-                name   = row[1] if len(row) > 1 else ""
-                phone  = row[2] if len(row) > 2 else ""
-                reason = row[5] if len(row) > 5 else ""
-
-                for col_i in range(6, min(len(row), 6 + MAX_FUTURE_COLS)):
-                    val = str(row[col_i]).strip()
-                    if val:
-                        pending.append({
-                            "customer_id":     cid,
-                            "name":            name,
-                            "phone":           phone,
-                            "reason":          reason,
-                            "future_date":     val,
-                            "future_col_index": col_i - 6
-                        })
+            for r in rows[1:]:
+                # CID(0), Name(1), Phone(2), Reason(5), FutureD(7), Type(8), Status(9)
+                if len(r) >= 10 and r[8] == "PREDICTED" and r[9] == "PENDING":
+                    pending.append({
+                        "customer_id":     str(r[0]),
+                        "name":            str(r[1]),
+                        "phone":           str(r[2]),
+                        "reason":          str(r[5]),
+                        "future_date":     str(r[7]),
+                    })
             return pending
         except Exception as e:
-            logger.error(f"[FA] ❌ Error reading pending future appointments: {e}")
-            return []
+            logger.error(f"[FA] Error reading pending predictions: {e}"); return []
+
+    def get_future_row(self, customer_id: str) -> Optional[dict]:
+        """Returns the latest predicted row for a customer."""
+        rows = self._read_all_rows()
+        for r in reversed(rows[1:]):
+            # CID(0), Type(8)
+            if len(r) >= 9 and str(r[0]) == customer_id and r[8] == "PREDICTED":
+                return {
+                    "customer_id": r[0],
+                    "name": r[1],
+                    "phone": r[2],
+                    "appointment_date": r[7], # Use Future Appt Date (index 7)
+                    "appointment_time": "10:00 AM",
+                    "appointment_reason": r[5]
+                }
+        return None

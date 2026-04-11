@@ -141,16 +141,10 @@
             "stage": "Stage 4 - Intermediate Treatment",
             "services": [
                 {
-                    "service": "Root Canal - Anterior (Front Tooth)",
+                    "service": "Root Canal Treatment",
                     "sittings": "1-2 sittings",
                     "gap_between_visits": "2-5 days between",
                     "clinical_detail": "Single-rooted tooth; access, pulp removal, canal shaping, irrigation and gutta-percha obturation."
-                },
-                {
-                    "service": "Root Canal - Posterior (Back Tooth)",
-                    "sittings": "2-3 sittings",
-                    "gap_between_visits": "3-7 days between",
-                    "clinical_detail": "Multi-rooted molar/premolar; greater complexity; inter-visit calcium hydroxide medicament placed."
                 },
                 {
                     "service": "Dental Crown - PFM / Full Ceramic / Zirconia",
@@ -241,14 +235,14 @@
             "stage": "Stage 6 - Cosmetic",
             "services": [
                 {
-                    "service": "In-Office Teeth Whitening",
+                    "service": "Teeth Whitening",
                     "sittings": "1-2 sittings",
                     "gap_between_visits": "7 days if 2 sessions",
                     "clinical_detail": "High-concentration peroxide gel activated by LED or laser; each session lasts 45-60 minutes."
                 },
                 {
                     "service": "At-Home Whitening - Custom Trays",
-                    "sittings": "1 sitting (tray fit)",
+                    "sittings": "1 sitting",
                     "gap_between_visits": "Daily use 1-2 weeks",
                     "clinical_detail": "Custom trays fabricated from impressions; patient applies prescribed gel at home 30-60 min/day."
                 },
@@ -324,7 +318,7 @@
                 },
                 {
                     "service": "Retainers (Post-Orthodontic)",
-                    "sittings": "1 sitting (fitting)",
+                    "sittings": "1 sitting",
                     "gap_between_visits": "Periodic reviews",
                     "clinical_detail": "Hawley, Essix clear or fixed bonded retainer; worn indefinitely to maintain corrected positions."
                 },

@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 load_dotenv()
+import logger_setup
 import uuid
 import json
 import re
@@ -22,14 +23,17 @@ from database_manager import DatabaseManager
 from voice_agent.dental_functions import FUNCTION_MAP as DENTAL_FUNCTION_MAP, reset_patient_session
 import asyncio
 import base64
-import logging
+import structlog
 import websockets
 
-# ── WhatsApp Scheduling Automation ───────────────────────────────────────────
+#  WhatsApp Scheduling Automation ─
 from scheduling_automation.automation_engine import AutomationEngine
 from scheduling_automation.sheet_watcher     import SheetWatcher
 from scheduling_automation.scheduler         import build_scheduler
 from scheduling_automation.webhook_server    import register_automation_routes
+
+#  Multilingual Support 
+from language_service import get_deepgram_language_config, detect_language, get_language_instruction, normalize_input
 
 #  APP SETUP      
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -43,8 +47,7 @@ CORS(app)
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY").strip('"\' ') if os.getenv("DEEPGRAM_API_KEY") else None
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN").strip('"\' ') if os.getenv("TWILIO_AUTH_TOKEN") else None
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "smile-dental-secret-key")
-logger = logging.getLogger("server.voice")
-logger.setLevel(logging.INFO)
+logger = structlog.get_logger("server.voice")
 
 
 #  DEEPGRAM AGENT VOICE CONFIG
@@ -90,19 +93,33 @@ def _build_today_context() -> str:
 
 def _load_voice_config() -> dict:
     """
-    Load dental_config.json and dynamically inject today's date context into
-    the LLM system prompt, replacing the {TODAY_CONTEXT} placeholder.
-    Called fresh on every incoming Twilio call so the date is always accurate.
+    Load dental_config.json and dynamically inject:
+      1. Today's date context into the LLM system prompt.
+      2. Multilingual STT config for Deepgram (Tamil + Hindi + English).
+      3. A language detection instruction into the agent prompt.
+    Called fresh on every incoming Twilio call.
     """
     config_path = os.path.join(os.path.dirname(__file__), "voice_agent", "dental_config.json")
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
 
+    # 1. Inject today's date context
     today_context = _build_today_context()
     prompt = config["agent"]["think"]["prompt"]
     config["agent"]["think"]["prompt"] = prompt.replace("{TODAY_CONTEXT}", today_context)
 
-    logger.info("[CONFIG] Date context injected into agent prompt:\n%s", today_context)
+    # 2. Enable multilingual STT (Tamil, Hindi, English auto-detection per utterance)
+    config["agent"]["listen"]["provider"] = get_deepgram_language_config()
+
+    # 3. Inject language rule at the START of the agent prompt
+    lang_rule = (
+        "LANGUAGE RULE: Detect the language the caller is speaking "
+        "(English, Tamil, or Hindi). Reply in the SAME language throughout the call. "
+        "If they switch languages, you switch too. Never mix languages in a single response.\n\n"
+    )
+    config["agent"]["think"]["prompt"] = lang_rule + config["agent"]["think"]["prompt"]
+
+    logger.info("[CONFIG] Multilingual voice config applied (en/ta/hi). Date context injected.")
     return config
 
 def _sts_connect():
@@ -114,9 +131,9 @@ def _sts_connect():
         subprotocols=["token", DEEPGRAM_API_KEY]
     )
 
-# ─────────────────────────────────────────────────────────────
+# ─
 #  ASYNC HELPERS — Pharmacy-pattern three-task pipeline
-# ─────────────────────────────────────────────────────────────
+# ─
 async def _sts_sender(sts_ws, audio_queue: asyncio.Queue):
     """Forward inbound Twilio audio to Deepgram Agent."""
     while True:
@@ -135,7 +152,7 @@ def _build_spoken_response(func_name: str, result: dict) -> str | None:
     # Use whichever is present.
     spoken = result.get("result") or result.get("error")
 
-    # ── verify_patient: override with a cleaner confirmation prompt ───
+    #  verify_patient: override with a cleaner confirmation prompt ─
     if func_name == "verify_patient":
         if result.get("found"):
             name = result.get("name", "")
@@ -143,7 +160,7 @@ def _build_spoken_response(func_name: str, result: dict) -> str | None:
         else:
             return "I was not able to find a record with that number. Would you like to register as a new patient instead?"
 
-    # ── All other tools: use the pre-built natural sentence directly ──
+    #  All other tools: use the pre-built natural sentence directly 
     # lookup_appointments, book_appointment, reschedule_appointment,
     # cancel_appointment all already return a full spoken sentence.
     if spoken:
@@ -167,7 +184,7 @@ async def _handle_function_calls(decoded: dict, sts_ws):
             except Exception:
                 arguments = func_call.get("arguments", {})
 
-            print(f"[TOOL] {func_name}({arguments})")
+            logger.info("tool_called", tool=func_name, args=arguments)
 
             if func_name in DENTAL_FUNCTION_MAP:
                 # Run potentially blocking I/O (Calendar/Sheets) in a thread
@@ -183,7 +200,7 @@ async def _handle_function_calls(decoded: dict, sts_ws):
                 "content": json.dumps(result)
             }
             await sts_ws.send(json.dumps(response))
-            print(f"[TOOL RESULT] {func_name}: {result}")
+            logger.info("tool_result", tool=func_name, result=result)
 
             # 2. Immediately inject a spoken response — eliminates silence gap
             spoken = _build_spoken_response(func_name, result)
@@ -193,10 +210,10 @@ async def _handle_function_calls(decoded: dict, sts_ws):
                     "message": spoken
                 }
                 await sts_ws.send(json.dumps(inject))
-                print(f"[INJECT] {func_name} → '{spoken[:80]}...' " if len(spoken) > 80 else f"[INJECT] {func_name} → '{spoken}'")
+                logger.info("inject", tool=func_name, spoken=spoken[:80] + "..." if len(spoken) > 80 else spoken)
 
     except Exception as e:
-        print(f"[TOOL ERROR] {e}")
+        logger.error("tool_error", error=str(e))
 
 
 
@@ -207,13 +224,16 @@ async def _sts_receiver(sts_ws, twilio_ws, streamsid_queue: asyncio.Queue):
 
     async for message in sts_ws:
         if isinstance(message, str):
-            print(f"[DG] {message}")
+            logger.debug("dg_raw_message", msg=message)
             try:
                 decoded = json.loads(message)
             except Exception:
                 continue
 
             msg_type = decoded.get("type", "")
+
+            if msg_type == "Error" or "error" in decoded:
+                logger.error("deepgram_agent_error", payload=decoded)
 
             if msg_type == "UserStartedSpeaking":
                 # Barge-in: clear Twilio's audio buffer so agent stops talking
@@ -224,7 +244,7 @@ async def _sts_receiver(sts_ws, twilio_ws, streamsid_queue: asyncio.Queue):
                 await _handle_function_calls(decoded, sts_ws)
 
         else:
-            # Binary audio from Deepgram TTS — forward to Twilio
+            # Binary audio from Deepgram TTS — forward to Twilio as fast as possible
             if streamsid:
                 media_msg = {
                     "event":     "media",
@@ -236,7 +256,8 @@ async def _sts_receiver(sts_ws, twilio_ws, streamsid_queue: asyncio.Queue):
 
 async def _twilio_receiver(twilio_ws, audio_queue: asyncio.Queue, streamsid_queue: asyncio.Queue):
     """Receive Twilio Media Stream packets and feed audio to Deepgram Agent."""
-    BUFFER_SIZE = 20 * 160  # 20 mulaw frames * 160 bytes each
+    # 5 mulaw frames * 160 bytes = 800 bytes (~100 ms) — small buffer = low latency
+    BUFFER_SIZE = 5 * 160
     inbuffer    = bytearray(b"")
 
     while True:
@@ -250,7 +271,7 @@ async def _twilio_receiver(twilio_ws, audio_queue: asyncio.Queue, streamsid_queu
 
             if event == "start":
                 streamsid = data["start"]["streamSid"]
-                print(f"[TWILIO] Stream started: {streamsid}")
+                logger.info("twilio_stream_started", streamsid=streamsid)
                 streamsid_queue.put_nowait(streamsid)
 
             elif event == "connected":
@@ -263,7 +284,7 @@ async def _twilio_receiver(twilio_ws, audio_queue: asyncio.Queue, streamsid_queu
                     inbuffer.extend(chunk)
 
             elif event == "stop":
-                print("[TWILIO] Stream stopped")
+                logger.info("twilio_stream_stopped")
                 break
 
             # Flush buffered audio in BUFFER_SIZE chunks
@@ -275,29 +296,36 @@ async def _twilio_receiver(twilio_ws, audio_queue: asyncio.Queue, streamsid_queu
             break
 
 
+async def wrap_task(task_coro, name):
+    try:
+        await task_coro
+    except Exception as e:
+        logger.error(f"task_failed_{name}", error=str(e), traceback=traceback.format_exc())
+
 async def _media_stream_async(sync_ws):
-    """
-    Main async coroutine — runs the three-task pharmacy-pattern pipeline:
-      1. _sts_sender   : Twilio audio  ->  Deepgram Agent
-      2. _sts_receiver : Deepgram Agent ->  Twilio audio + function calls
-      3. _twilio_receiver: parse Twilio events, buffer audio
-    """
     audio_queue     = asyncio.Queue()
     streamsid_queue = asyncio.Queue()
 
-    async with _sts_connect() as sts_ws:
-        config = _load_voice_config()
-        await sts_ws.send(json.dumps(config))
-        print("[DG] Deepgram Agent config sent — session started")
+    try:
+        async with _sts_connect() as sts_ws:
+            config = _load_voice_config()
+            await sts_ws.send(json.dumps(config))
+            logger.info("deepgram_agent_session_started")
 
-        await asyncio.wait(
-            [
-                asyncio.ensure_future(_sts_sender(sts_ws, audio_queue)),
-                asyncio.ensure_future(_sts_receiver(sts_ws, sync_ws, streamsid_queue)),
-                asyncio.ensure_future(_twilio_receiver(sync_ws, audio_queue, streamsid_queue)),
-            ],
-            return_when=asyncio.FIRST_COMPLETED,
-        )
+            done, pending = await asyncio.wait(
+                [
+                    asyncio.create_task(wrap_task(_sts_sender(sts_ws, audio_queue), "sts_sender")),
+                    asyncio.create_task(wrap_task(_sts_receiver(sts_ws, sync_ws, streamsid_queue), "sts_receiver")),
+                    asyncio.create_task(wrap_task(_twilio_receiver(sync_ws, audio_queue, streamsid_queue), "twilio_receiver")),
+                ],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for t in done:
+                logger.warning("media_stream_task_completed", task_name=t.get_name() if hasattr(t, 'get_name') else str(t))
+            for p in pending:
+                p.cancel()
+    except Exception as e:
+        logger.error("media_stream_async_error", error=str(e), traceback=traceback.format_exc())
 
 # Session TTL in seconds — inactive sessions are cleaned up automatically
 SESSION_TTL = 300   # 5 minutes
@@ -322,15 +350,79 @@ db = DatabaseManager(app)
 sessions      = {}
 sessions_lock = threading.Lock()
 
-# OLLAMA WARM-UP 
-def warmup_ollama():
-    """Load the model into GPU memory at startup to avoid cold-start delays."""
+# OLLAMA MODEL AUTO-DETECT + WARM-UP
+import app as _app_module  # so we can patch the module-level constant at runtime
+
+def _get_available_ollama_models() -> list:
+    """Return list of model names currently pulled in Ollama."""
     try:
-        print("[WARMUP] Warming up Ollama model — please wait...")
-        resp = http_requests.post(
+        r = http_requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
+        r.raise_for_status()
+        return [m["name"] for m in r.json().get("models", [])]
+    except Exception:
+        return []
+
+def _resolve_model(preferred: str, available: list) -> str:
+    """
+    Return 'preferred' if downloaded, otherwise fall back to the best
+    available model so the server never crashes at startup.
+    """
+    # Exact match
+    if preferred in available:
+        return preferred
+    # Prefix match (e.g. 'aya-expanse:8b' matches 'aya-expanse:8b-q4_0')
+    for m in available:
+        if m.startswith(preferred.split(":")[0]):
+            return m
+    # Fallback priority: phi3 > qwen > first available
+    for fallback in ["phi3:mini", "qwen3.5:0.8b"]:
+        if any(m.startswith(fallback.split(":")[0]) for m in available):
+            for m in available:
+                if m.startswith(fallback.split(":")[0]):
+                    return m
+    return available[0] if available else preferred
+
+def _pull_model_background(model: str):
+    """Pull a model in the background without blocking the server."""
+    try:
+        logger.info("[SERVER] Starting background pull", model=model)
+        http_requests.post(
+            f"{OLLAMA_BASE_URL}/api/pull",
+            json={"name": model},
+            timeout=1800  # 30 min max
+        )
+        logger.info("[SERVER] Background pull complete", model=model)
+        # Hot-swap the model once downloaded
+        _app_module.OLLAMA_MODEL = model
+        logger.info("[SERVER] Model hot-swapped", model=model)
+    except Exception as e:
+        logger.warning("background_pull_failed", model=model, error=str(e))
+
+def warmup_ollama():
+    """Detect available models, fall back gracefully, then warm up."""
+    available = _get_available_ollama_models()
+    resolved  = _resolve_model(OLLAMA_MODEL, available)
+
+    if resolved != OLLAMA_MODEL:
+        logger.warning(
+            "[SERVER] Preferred model not found, using fallback",
+            preferred=OLLAMA_MODEL, fallback=resolved
+        )
+        # Patch the runtime constant so all future calls use the fallback
+        _app_module.OLLAMA_MODEL = resolved
+        # Start pulling the preferred model quietly in the background
+        threading.Thread(
+            target=_pull_model_background, args=(OLLAMA_MODEL,), daemon=True
+        ).start()
+    else:
+        logger.info("[SERVER] Preferred model available", model=resolved)
+
+    # Warm up whichever model we resolved
+    try:
+        http_requests.post(
             f"{OLLAMA_BASE_URL}/api/chat",
             json={
-                "model":      OLLAMA_MODEL,
+                "model":      _app_module.OLLAMA_MODEL,
                 "messages":   [{"role": "user", "content": "hi"}],
                 "stream":     False,
                 "keep_alive": -1,
@@ -338,16 +430,22 @@ def warmup_ollama():
             },
             timeout=120
         )
-        if resp.status_code == 200:
-            print("[OK] Ollama model is warm and ready!")
-        else:
-            print(f"[WARNING] Ollama warm-up returned status {resp.status_code}")
+        logger.info("[SERVER] Ollama ready", model=_app_module.OLLAMA_MODEL)
     except Exception as e:
-        print(f"[WARNING] Ollama warm-up failed (model may load slowly on first request): {e}")
+        logger.warning("ollama_warm_up_failed", error=str(e))
 
 threading.Thread(target=warmup_ollama, daemon=True).start()
 
-#  OLLAMA HEARTBEAT 
+#  SHARED SINGLETONS — Initialized once at startup
+from google_sheets_manager import GoogleSheetsManager
+from vector_db_manager     import VectorDBManager
+from app import GoogleCalendarManager
+
+# Global manager instances
+_shared_calendar = GoogleCalendarManager()
+_shared_sheets   = GoogleSheetsManager()
+_shared_vdb      = VectorDBManager()
+
 def ollama_heartbeat():
     """Ping Ollama every 4 min to keep the model in VRAM (default unload = 5 min)."""
     while True:
@@ -373,7 +471,7 @@ def cleanup_sessions():
             for sid in stale:
                 sessions.pop(sid, None)
         if stale:
-            print(f"[CLEANUP] Removed {len(stale)} stale sessions")
+            logger.info("removed_stale_sessions", count=len(stale))
 
 threading.Thread(target=cleanup_sessions, daemon=True).start()
 
@@ -381,47 +479,71 @@ threading.Thread(target=cleanup_sessions, daemon=True).start()
 class WebVoiceAgent:
     """Wraps DentalVoiceAgent for the web / Twilio interface."""
 
-    def __init__(self, session_id, db_manager):
+    def __init__(self, session_id, db_manager, calendar=None, sheets=None, vdb=None):
         self.session_id           = session_id
         self.db_manager           = db_manager
-        self.agent                = DentalVoiceAgent(use_voice=False)
+        # Pass shared managers to DentalVoiceAgent
+        self.agent                = DentalVoiceAgent(
+            use_voice=False, 
+            calendar=calendar or _shared_calendar, 
+            sheets=sheets or _shared_sheets, 
+            vdb=vdb or _shared_vdb
+        )
         self.conversation_history = []
         self.last_active          = time.time()
+        self.detected_language    = "en"   # Default: English; updated on each message
         
         # Load existing state if available
         saved_state = self.db_manager.get_session_state(session_id)
         if saved_state:
             self.agent.state = saved_state
-            print(f"[SESSION] Restored state for {session_id}")
+            self.detected_language = saved_state.get("language", "en")
+            logger.info("restored_session_state", session_id=session_id)
 
     def process_message(self, user_message):
         """Non-streaming version for Twilio/Voice."""
         self.last_active = time.time()
         try:
+            # 1. Detect language
+            self.detected_language = detect_language(user_message)
+            # 2. Normalize Tamil/Hindi → English for aya-expanse:8b, keep English tokens for it
+            normalized = normalize_input(user_message, self.detected_language)
+            # 3. Append reply-language instruction
+            lang_hint = get_language_instruction(self.detected_language)
+            enriched_message = f"{normalized} [{lang_hint}]" if self.detected_language != "en" else normalized
+
             self.conversation_history.append({"role":"user","message":user_message,"timestamp":datetime.now().isoformat()})
-            # Consume the generator fully
-            response_chunks = list(self.agent.generate_response(user_message))
+            response_chunks = list(self.agent.generate_response(enriched_message))
             response = "".join(response_chunks)
-            
+
+            self.agent.state["language"] = self.detected_language
             self.db_manager.update_session_state(self.session_id, self.agent.state)
             self.conversation_history.append({"role":"agent","message":response,"timestamp":datetime.now().isoformat()})
-            return {"success":True,"response":response,"state":self.agent.state,"conversation":self.conversation_history}
+            return {"success":True,"response":response,"state":self.agent.state,"conversation":self.conversation_history,"language":self.detected_language}
         except Exception as e:
             traceback.print_exc()
             return {"success":False,"error":str(e),"response":"Sorry, I encountered an error."}
 
     def process_message_stream(self, user_message):
-        """Streaming version for Web Chat."""
+        """Streaming version for Web Chat. Includes language detection + normalization."""
         self.last_active = time.time()
+        # 1. Detect language
+        self.detected_language = detect_language(user_message)
+        # 2. Normalize Tamil/Hindi → English for aya-expanse:8b
+        normalized = normalize_input(user_message, self.detected_language)
+        # 3. Append reply-language instruction
+        lang_hint = get_language_instruction(self.detected_language)
+        enriched_message = f"{normalized} [{lang_hint}]" if self.detected_language != "en" else normalized
         self.conversation_history.append({"role":"user","message":user_message,"timestamp":datetime.now().isoformat()})
-        
+
         try:
             full_response_parts = []
-            for chunk in self.agent.generate_response(user_message):
+            for chunk in self.agent.generate_response(enriched_message):
                 full_response_parts.append(chunk)
                 yield chunk
 
             full_response = "".join(full_response_parts)
+            self.agent.state["language"] = self.detected_language
             self.db_manager.update_session_state(self.session_id, self.agent.state)
             self.conversation_history.append({"role":"agent","message":full_response,"timestamp":datetime.now().isoformat()})
         except Exception as e:
@@ -577,7 +699,13 @@ def get_admin_data():
 def start_session():
     session_id = str(uuid.uuid4())
     with sessions_lock:
-        sessions[session_id] = WebVoiceAgent(session_id, db)
+        sessions[session_id] = WebVoiceAgent(
+            session_id, 
+            db,
+            calendar=_shared_calendar,
+            sheets=_shared_sheets,
+            vdb=_shared_vdb
+        )
     return jsonify({
         "success":    True,
         "session_id": session_id,
@@ -672,16 +800,16 @@ def validate_twilio_request(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
-        # ── Dev bypass ──────────────────────────────────────────────────────
+        #  Dev bypass 
         if _SKIP_TWILIO_VALIDATION:
-            print("[TWILIO] Signature validation SKIPPED (TWILIO_SKIP_VALIDATION=true)")
+            logger.info("twilio_signature_validation_skipped")
             return f(*args, **kwargs)
 
         if not TWILIO_AUTH_TOKEN:
-            print("[WARNING] TWILIO_AUTH_TOKEN not set — skipping signature validation")
+            logger.warning("twilio_auth_token_not_set_skipping_signature_validation")
             return f(*args, **kwargs)
 
-        # ── URL reconstruction (ngrok / proxy safe) ──────────────────────────
+        #  URL reconstruction (ngrok / proxy safe) 
         # ngrok sets X-Forwarded-Proto=https and uses the ngrok domain as
         # the Host header; X-Forwarded-Host is also present on most versions.
         original_url = request.url  # fallback (will be http://localhost:…)
@@ -705,13 +833,10 @@ def validate_twilio_request(f):
 
         validator = RequestValidator(TWILIO_AUTH_TOKEN)
         if not validator.validate(original_url, post_vars, signature):
-            print("[SECURITY] Twilio signature validation FAILED")
-            print(f"  > URL used : {original_url}")
-            print(f"  > Signature: {signature[:20]}…")
-            print("  > TIP: Set TWILIO_SKIP_VALIDATION=true in .env to bypass during dev")
+            logger.error("twilio_signature_validation_failed", url=original_url, signature=signature[:20])
             return "Forbidden", 403
 
-        print(f"[SECURITY] Twilio signature validation PASSED: {original_url}")
+        logger.info("twilio_signature_validation_passed", url=original_url)
         return f(*args, **kwargs)
     return decorated
 
@@ -725,7 +850,7 @@ def twilio_voice():
     the double-greeting / race condition that caused calls to drop).
     """
     call_sid = request.form.get('CallSid', 'unknown')
-    print(f"\n[CALL] Incoming call: {call_sid}")
+    logger.info("incoming_call", call_sid=call_sid)
 
     # Determine the public host (ngrok / proxy friendly)
     host = (
@@ -739,7 +864,7 @@ def twilio_voice():
 
     # The WebSocket URL MUST be wss:// in production (ngrok handles TLS offload)
     stream_url = f"wss://{host}/media-stream"
-    print(f"  > Streaming to: {stream_url}")
+    logger.info("streaming_to", stream_url=stream_url)
 
     resp    = VoiceResponse()
     connect = Connect()
@@ -758,25 +883,20 @@ def media_stream(ws):
     """
     # Reset per-call identity session so each caller starts fresh
     reset_patient_session()
-    print("[STREAM] Twilio WebSocket connected")
+    logger.info("twilio_websocket_connected")
     try:
         asyncio.run(_media_stream_async(ws))
     except Exception as e:
-        print(f"[STREAM ERROR] {e}")
+        logger.error("stream_error", error=str(e))
     finally:
-        print("[STREAM] Twilio WebSocket closed")
+        logger.info("twilio_websocket_closed")
 
 # NOTE: /twilio/handle-input (old Gather-based approach) has been removed.
 # The Deepgram Agent WebSocket pipeline handles the full conversation now.
 
 #  ENTRY POINT 
 if __name__ == '__main__':
-    print("=" * 60)
-    print("SMILE DENTAL - Web Server + WhatsApp Automation")
-    print("=" * 60)
-
-    # ── START WHATSAPP AUTOMATION ───────────────────────────────────────────
-    print("[WA] Initializing WhatsApp Scheduling Automation...")
+    logger.info("[SERVER] Starting server")
     try:
         wa_engine = AutomationEngine()
         wa_watcher = SheetWatcher(
@@ -784,19 +904,12 @@ if __name__ == '__main__':
             on_modified=wa_engine.on_appointment_modified,
             on_deleted=wa_engine.on_appointment_cancelled
         )
-        # Register automation webhook routes to this port (5000)
         register_automation_routes(app, wa_engine)
-        
-        # Start background tasks (sheet polling + reminder scheduler)
         wa_scheduler = build_scheduler(wa_engine, wa_watcher)
         wa_scheduler.start()
-        print("[WA] ✅ WhatsApp Automation integration SUCCESSFUL")
-        
-        # Initial scan to check for updates while server was off
+        logger.info("[SERVER] Automation ready")
         wa_watcher.check_for_changes()
-    except Exception as e:
-        print(f"[WA] ❌ Automation Startup ERROR: {e}")
+    except Exception:
+        logger.error("automation_error")
 
-    # IMPORTANT: use_reloader=False is required when running APScheduler 
-    # to avoid starting duplicate background jobs.
     app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)

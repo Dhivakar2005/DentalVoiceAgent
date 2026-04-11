@@ -21,11 +21,10 @@
       "keywords": [
         "how to book",
         "how do i book",
-        "book appointment",
-        "make appointment",
-        "schedule appointment",
+        "how can i book",
         "booking process",
-        "how can i book"
+        "what are the ways to book",
+        "where to book"
       ],
       "answer": "You can book by calling our voice assistant, using our website chat, or calling us directly."
     },
@@ -49,7 +48,7 @@
         "future appointment",
         "days in advance"
       ],
-      "answer": "You can book appointments up to 3 days in advance from today."
+      "answer": "You can book appointments up to 10 days in advance from today."
     },
     "services": {
       "keywords": [
@@ -299,7 +298,7 @@
   },
   "intent_patterns": {
     "reschedule": [
-      "\\b(reschedule|rescheduling|change|move|shift|update|modify)\\b.{0,40}\\bappointment\\b",
+      "\\b(reschedule|re-schedule|reshedule|rechedule|rescheduling|change|move|shift|update|modify)\\b.{0,40}\\bappointment\\b",
       "\\bappointment\\b.{0,40}\\b(change|move|reschedule|different\\s*time|new\\s*time)\\b"
     ],
     "cancel": [
@@ -326,7 +325,7 @@
     "phone": "What is your phone number?",
     "date": "What date would you like to come in?",
     "time": "What time works best for you,for example 11:00 AM or 12:00 PM.",
-    "reason": "What is the reason for your visit? (e.g., checkup, toothache or others)",
+    "reason": "Before I confirm, may I know the reason for your visit? For example, is it for a checkup, a toothache, or something else?",
     "new_date": "What is the new date for your appointment?",
     "new_time": "What is the new time for your appointment?,for example 11:00 AM or 12:00 PM"
   },
@@ -338,15 +337,18 @@
     "help_options": "I can help you book, reschedule, or cancel an appointment. What would you like to do?",
     "id_not_found": "I couldn't find a record with that mobile number. Could you please double check? Or are you a new patient?",
     "welcome_back": "Welcome back, {name}! {next_prompt}",
-    "confirm_booking": "Just to confirm booking for {name} on {date} at {time} for {reason}. Say yes to confirm or no to change.",
+    "confirm_booking": "Just to confirm, I'll book an appointment with {doctor} for {name} on {date} at {time} for {reason}. Shall I go ahead?",
+
     "slot_taken": "That time slot is already taken. Please choose a different time.",
     "past_date": "That date is in the past. Please choose a future date.",
-    "advanced_booking_limit": "We only accept bookings up to 3 days in advance.",
-    "closed_biz_hours": "We are open Monday to Saturday, 9 AM to 5 PM. Please choose another slot.",
+    "advanced_booking_limit": "We only accept bookings up to 90 days in advance.",
+    "closed_biz_hours": "We are only open Monday to Saturday, 9 AM to 5 PM. Please choose another time.",
     "appointment_cancelled": "Your appointment on {date} has been cancelled. Is there anything else?",
-    "appointment_booked": "Your appointment is booked! Your customer ID is {cid}. We will see you on {date} at {time}. Is there anything else?",
-    "appointment_rescheduled": "Rescheduled! Your new appointment is on {date} at {time}. Anything else?",
+    "appointment_booked": "Your appointment is booked with {doctor}! Your customer ID is {cid}. We will see you on {date} at {time}. Is there anything else?",
+    "appointment_rescheduled": "Rescheduled with {doctor}! Your new appointment is on {date} at {time}. Anything else?",
     "appointment_not_found": "I could not find your existing appointment. Please check the date.",
+    "reschedule_not_found": "I'm sorry, I couldn't find an appointment on that date in our records. Could you please provide the correct date of your existing appointment?",
+    "reschedule_time_not_found": "And could you also double check the time? I couldn't find a record for the time you mentioned for your existing appointment.",
     "view_appointments": "Your upcoming appointments: {lines}. Anything else?",
     "no_appointments": "No upcoming appointments found for your account.",
     "how_else_help": "How else can I help you?",

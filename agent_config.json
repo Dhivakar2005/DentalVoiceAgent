@@ -21,7 +21,7 @@
                 "type": "open_ai"
             },
             "model": "gpt-4o-mini",
-            "instructions": "You are a professional Dental Assistant for Smile Dental. You help patients book, reschedule, and cancel appointments. You have access to three main functions: book_appointment, reschedule_appointment, and cancel_appointment. IMPORTANT: Always confirm details like date, time, and patient name before finalizing any action. We are open Monday to Saturday, 9 AM to 5 PM. Be helpful, professional, and clear.",
+            "instructions": "You are a professional Dental Assistant for Smile Dental. You help patients book, reschedule, and cancel appointments.\n\nWORKFLOW FOR ALL ACTIONS:\n1. Always call verify_patient(phone) first to get the customer_id.\n2. Use that customer_id for all subsequent calls — never ask for name or phone again.\n\nRESCHEDULING WORKFLOW (STRICT):\n1. After verifying the patient, DO NOT list or suggest any appointments.\n2. Ask the patient ONLY: 'Please tell me the current appointment date and time you want to reschedule.'\n3. Wait for the patient to provide BOTH the existing date AND time.\n4. Confirm: 'You want to reschedule your appointment on <old_date> at <old_time>, correct?'\n5. After patient confirms, ask: 'What new date and time would you like?'\n6. Call reschedule_appointment with customer_id, old_date, old_time, new_date, new_time.\n\nSTRICT PROHIBITIONS:\n- NEVER list upcoming appointments to the patient.\n- NEVER suggest or auto-select an appointment.\n- NEVER infer which appointment to reschedule from phone number alone.\n- NEVER create a new row when rescheduling — the system updates the existing row.\n- If the patient does not provide both date AND time, ask again until both are given.\n\nGENERAL: Always confirm details before finalizing. We are open Monday to Saturday, 9 AM to 5 PM. Be helpful, professional, and clear.",
             "functions": [
                 {
                     "name": "book_appointment",
@@ -29,28 +29,66 @@
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "name": { "type": "string" },
-                            "phone": {"type": "string" },
-                            "date": { "type": "string", "description": "ISO date (YYYY-MM-DD)" },
-                            "time": { "type": "string", "description": "Time (e.g., 10:30 AM)" },
-                            "reason": { "type": "string" }
+                            "name": {
+                                "type": "string"
+                            },
+                            "phone": {
+                                "type": "string"
+                            },
+                            "date": {
+                                "type": "string",
+                                "description": "ISO date (YYYY-MM-DD)"
+                            },
+                            "time": {
+                                "type": "string",
+                                "description": "Time (e.g., 10:30 AM)"
+                            },
+                            "reason": {
+                                "type": "string"
+                            }
                         },
-                        "required": ["name", "phone", "date", "time", "reason"]
+                        "required": [
+                            "name",
+                            "phone",
+                            "date",
+                            "time",
+                            "reason"
+                        ]
                     }
                 },
                 {
                     "name": "reschedule_appointment",
-                    "description": "Reschedule an existing appointment to a new date and time.",
+                    "description": "Reschedule an existing appointment. The patient MUST provide their current appointment date AND time so the correct row is identified. Never auto-select — always confirm old_date and old_time with the patient before calling this function.",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "name": { "type": "string" },
-                            "phone": {"type": "string" },
-                            "old_date": { "type": "string", "description": "Current date (YYYY-MM-DD)" },
-                            "new_date": { "type": "string", "description": "New date (YYYY-MM-DD)" },
-                            "new_time": { "type": "string", "description": "New time (e.g., 2:00 PM)" }
+                            "customer_id": {
+                                "type": "string",
+                                "description": "Verified patient customer ID obtained from verify_patient (e.g., CUST001)"
+                            },
+                            "old_date": {
+                                "type": "string",
+                                "description": "Current appointment date the patient wants to change (YYYY-MM-DD)"
+                            },
+                            "old_time": {
+                                "type": "string",
+                                "description": "Current appointment time the patient wants to change (e.g., 10:00 AM)"
+                            },
+                            "new_date": {
+                                "type": "string",
+                                "description": "New appointment date (YYYY-MM-DD)"
+                            },
+                            "new_time": {
+                                "type": "string",
+                                "description": "New appointment time (e.g., 2:00 PM)"
+                            }
                         },
-                        "required": ["name", "phone", "old_date", "new_date", "new_time"]
+                        "required": [
+                            "old_date",
+                            "old_time",
+                            "new_date",
+                            "new_time"
+                        ]
                     }
                 },
                 {
@@ -59,11 +97,38 @@
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "name": { "type": "string" },
-                            "phone": { "type": "string" },
-                            "date": { "type": "string", "description": "Date of appointment (YYYY-MM-DD)" }
+                            "name": {
+                                "type": "string"
+                            },
+                            "phone": {
+                                "type": "string"
+                            },
+                            "date": {
+                                "type": "string",
+                                "description": "Date of appointment (YYYY-MM-DD)"
+                            }
                         },
-                        "required": ["name", "phone", "date"]
+                        "required": [
+                            "name",
+                            "phone",
+                            "date"
+                        ]
+                    }
+                },
+                {
+                    "name": "get_available_slots",
+                    "description": "Get a list of 10-minute free appointment time slots for a specific date.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "description": "ISO date (YYYY-MM-DD)"
+                            }
+                        },
+                        "required": [
+                            "date"
+                        ]
                     }
                 }
             ]

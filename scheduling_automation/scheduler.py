@@ -1,6 +1,6 @@
 """
 scheduler.py
-────────────
+
 APScheduler jobs for the Smile Dental scheduling automation.
 
 Jobs:
@@ -12,13 +12,13 @@ Jobs:
   4. morning_reminder_job      — cron 08:00 → TYPE-B same-day reminder (IST)
 """
 
-import logging
+import structlog
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from zoneinfo import ZoneInfo
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 TIMEZONE = "Asia/Kolkata"
 
@@ -33,7 +33,7 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
     """
     scheduler = BackgroundScheduler(timezone=ZoneInfo(TIMEZONE))
 
-    # ── Job 1: Sheet Watcher (every 30 seconds) ───────────────────────────────
+    #  Job 1: Sheet Watcher (every 30 seconds) ─
     scheduler.add_job(
         func=_safe_run(watcher.check_for_changes, "SheetWatcher"),
         trigger=IntervalTrigger(seconds=30),
@@ -42,9 +42,9 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
         replace_existing=True,
         max_instances=1
     )
-    logger.info("[SCHEDULER] ✅ Job 1: Sheet Watcher (30s)")
+    logger.info("[SCHEDULER] Job 1: Sheet Watcher (30s)")
 
-    # ── Job 2: 36h Reminder — CURRENT appointments (every 1 hour) ────────────
+    #  Job 2: 36h Reminder — CURRENT appointments (every 1 hour) 
     # TYPE-B: Informational reminder only. No YES/NO.
     scheduler.add_job(
         func=_safe_run(engine.check_and_send_current_reminders, "CurrentReminder"),
@@ -54,9 +54,9 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
         replace_existing=True,
         max_instances=1
     )
-    logger.info("[SCHEDULER] ✅ Job 2: 36h Current Reminder (1h interval)")
+    logger.info("[SCHEDULER] Job 2: 36h Current Reminder (1h interval)")
 
-    # ── Job 3: Prediction Notifier — PREDICTED appointments (every 1 hour) ───
+    #  Job 3: Prediction Notifier — PREDICTED appointments (every 1 hour) ─
     # TYPE-C: YES/NO confirmation request only.
     scheduler.add_job(
         func=_safe_run(engine.check_and_send_prediction_messages, "PredictionNotifier"),
@@ -66,9 +66,9 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
         replace_existing=True,
         max_instances=1
     )
-    logger.info("[SCHEDULER] ✅ Job 3: Prediction Notifier (1h interval)")
+    logger.info("[SCHEDULER] Job 3: Prediction Notifier (1h interval)")
 
-    # ── Job 4: 8 AM Same-Day Reminder (daily cron) ───────────────────────────
+    #  Job 4: 8 AM Same-Day Reminder (daily cron) ─
     # TYPE-B: Informational only. No YES/NO.
     scheduler.add_job(
         func=_safe_run(engine.send_today_reminders, "MorningReminder"),
@@ -78,7 +78,7 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
         replace_existing=True,
         max_instances=1
     )
-    logger.info("[SCHEDULER] ✅ Job 4: 8 AM Morning Reminder (daily cron)")
+    logger.info("[SCHEDULER] Job 4: 8 AM Morning Reminder (daily cron)")
 
     return scheduler
 
@@ -89,6 +89,6 @@ def _safe_run(func, name: str):
         try:
             func()
         except Exception as e:
-            logger.error(f"[SCHEDULER] ❌ Job '{name}' error: {e}", exc_info=True)
+            logger.error(f"[SCHEDULER] Job '{name}' error: {e}", exc_info=True)
     wrapper.__name__ = name
     return wrapper
