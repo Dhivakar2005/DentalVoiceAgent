@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from database_manager import DatabaseManager
 import structlog
 
@@ -70,6 +71,13 @@ class GoogleSheetsManager:
                     try:
                         creds.refresh(Request())
                         break
+                    except RefreshError as e:
+                        logger.warning("sheets_token_refresh_error_invalid_grant", error=str(e))
+                        creds = None
+                        if os.path.exists("token.pickle"):
+                            try: os.remove("token.pickle")
+                            except: pass
+                        break
                     except Exception as e:
                         if attempt == max_retries - 1:
                             logger.error("google_sheets_auth_error", error=str(e))
@@ -77,11 +85,12 @@ class GoogleSheetsManager:
                             raise e
                         logger.warning("google_sheets_refresh_failed", attempt=attempt+1, max=max_retries)
                         time.sleep(2)
-            else:
+            
+            if not creds or not (hasattr(creds, 'valid') and creds.valid):
                 flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
                 creds = flow.run_local_server(port=0)
-            with open("token.pickle", "wb") as token:
-                pickle.dump(creds, token)
+                with open("token.pickle", "wb") as token:
+                    pickle.dump(creds, token)
         return build("sheets", "v4", credentials=creds)
 
     def initialize_sheet(self):

@@ -70,5 +70,10 @@
   },
   "CUST001_2026-04-14_4:00 PM": {
     "confirmation_sent": true
+  },
+  "CUST001_2026-04-13_2:00 PM": {
+    "confirmation_sent": true,
+    "reminder_sent": true,
+    "reminder_mode": "SHORT_NOTICE"
   }
 }

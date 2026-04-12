@@ -166,5 +166,17 @@
     "type": "BOOKED",
     "status": "CONFIRMED",
     "whatsapp_conf": "SENT"
+  },
+  "CUST001_2026-04-13_2:00 PM": {
+    "customer_id": "CUST001",
+    "name": "Dhivakar G",
+    "phone": "8610080257",
+    "appointment_date": "2026-04-13",
+    "appointment_time": "2:00 PM",
+    "appointment_reason": "toothache",
+    "doctor": "Dr. Patel",
+    "type": "BOOKED",
+    "status": "CONFIRMED",
+    "whatsapp_conf": "SENT"
   }
 }

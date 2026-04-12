@@ -57,6 +57,7 @@ from collections import defaultdict
 import structlog
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 
 logger = structlog.get_logger(__name__)
 
@@ -98,7 +99,19 @@ class ChainNormalizer:
                 creds = pickle.load(f)
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                try:
+                    creds.refresh(Request())
+                    with open(TOKEN_PATH, "wb") as f:
+                        pickle.dump(creds, f)
+                except RefreshError:
+                    logger.error("google_auth_revoked_or_expired")
+                    if os.path.exists(TOKEN_PATH):
+                        try: os.remove(TOKEN_PATH)
+                        except: pass
+                    raise RuntimeError("Google credentials revoked. Run main app to re-authenticate.")
+                except Exception as e:
+                    logger.error("token_refresh_failed", error=str(e))
+                    raise
             else:
                 raise Exception("Valid credentials not found. Please authenticate first.")
         return build("sheets", "v4", credentials=creds)

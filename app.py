@@ -45,6 +45,7 @@ import requests
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from google_sheets_manager import GoogleSheetsManager
 from vector_db_manager import VectorDBManager
 
@@ -546,14 +547,22 @@ class GoogleCalendarManager:
                     try: 
                         creds.refresh(Request())
                         break
+                    except RefreshError as e:
+                        logger.warning("token_refresh_error_invalid_grant", error=str(e))
+                        creds = None # Trigger Flow
+                        if os.path.exists("token.pickle"):
+                            try: os.remove("token.pickle")
+                            except: pass
+                        break
                     except Exception as e:
                         if attempt == 2: raise
                         time.sleep(2)
-            else:
+            
+            if not creds or not (hasattr(creds, 'valid') and creds.valid):
                 flow  = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
                 creds = flow.run_local_server(port=0)
-            with open("token.pickle", "wb") as f:
-                pickle.dump(creds, f)
+                with open("token.pickle", "wb") as f:
+                    pickle.dump(creds, f)
         return build("calendar", "v3", credentials=creds)
 
     def is_available(self, start_dt, end_dt, customer_id=None):

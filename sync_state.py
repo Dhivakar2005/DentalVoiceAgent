@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 
 TOKEN_PATH  = "token.pickle"
 CONFIG_PATH = "sheets_config.json"
@@ -27,11 +28,27 @@ SHEET_NAME  = "Customers"
 STATE_PATH  = os.path.join("scheduling_automation", "appointment_state.json")
 
 #  Auth ─
-with open(TOKEN_PATH, "rb") as f:
-    creds = pickle.load(f)
-if not creds.valid:
-    if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
+creds = None
+if os.path.exists(TOKEN_PATH):
+    with open(TOKEN_PATH, "rb") as f:
+        creds = pickle.load(f)
+
+if not creds or not creds.valid:
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            with open(TOKEN_PATH, "wb") as f:
+                pickle.dump(creds, f)
+        except RefreshError:
+             if os.path.exists(TOKEN_PATH):
+                 try: os.remove(TOKEN_PATH)
+                 except: pass
+             print("Google credentials revoked. Run main app to re-authenticate.")
+             sys.exit(1)
+    else:
+        print("Google Sheets credentials not found. Run main app first.")
+        sys.exit(1)
+
 service = build("sheets", "v4", credentials=creds)
 
 with open(CONFIG_PATH) as f:

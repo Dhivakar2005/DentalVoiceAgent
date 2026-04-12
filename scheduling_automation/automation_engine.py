@@ -43,6 +43,7 @@ from typing import Optional
 
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -114,9 +115,19 @@ class AutomationEngine:
                 creds = pickle.load(f)
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                with open(TOKEN_PATH, "wb") as f:
-                    pickle.dump(creds, f)
+                try:
+                    creds.refresh(Request())
+                    with open(TOKEN_PATH, "wb") as f:
+                        pickle.dump(creds, f)
+                except RefreshError:
+                    logger.error("google_auth_revoked_or_expired")
+                    if os.path.exists(TOKEN_PATH):
+                        try: os.remove(TOKEN_PATH)
+                        except: pass
+                    raise RuntimeError("Google credentials revoked. Run main app to re-authenticate.")
+                except Exception as e:
+                    logger.error("token_refresh_failed", error=str(e))
+                    raise
             else:
                 raise RuntimeError("Google Sheets not authenticated. Run main app first.")
         return build("sheets", "v4", credentials=creds)
