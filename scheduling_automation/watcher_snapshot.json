@@ -20,7 +20,7 @@
     "appointment_reason": "Toothache",
     "doctor": "Dr. Smith",
     "type": "BOOKED",
-    "status": "CONFIRMED",
+    "status": "COMPLETED",
     "whatsapp_conf": "SENT"
   },
   "CUST001_2026-04-07_3:00 PM": {
@@ -32,20 +32,8 @@
     "appointment_reason": "Smile Designing",
     "doctor": "Dr. Sharma",
     "type": "BOOKED",
-    "status": "CONFIRMED",
+    "status": "COMPLETED",
     "whatsapp_conf": "SENT"
-  },
-  "CUST001_2026-04-15_3:00 PM": {
-    "customer_id": "CUST001",
-    "name": "Dhivakar G",
-    "phone": "8610080257",
-    "appointment_date": "2026-04-15",
-    "appointment_time": "3:00 PM",
-    "appointment_reason": "Smile Designing",
-    "doctor": "Dr. Sharma",
-    "type": "PREDICTED",
-    "status": "PENDING",
-    "whatsapp_conf": "PENDING"
   },
   "CUST001_2026-04-23_3:00 PM": {
     "customer_id": "CUST001",
@@ -55,9 +43,9 @@
     "appointment_time": "3:00 PM",
     "appointment_reason": "Smile Designing",
     "doctor": "Dr. Sharma",
-    "type": "PREDICTED",
-    "status": "PENDING",
-    "whatsapp_conf": "PENDING"
+    "type": "BOOKED",
+    "status": "CONFIRMED",
+    "whatsapp_conf": "SENT"
   },
   "CUST001_2026-04-07_2:30 PM": {
     "customer_id": "CUST001",
@@ -68,7 +56,7 @@
     "appointment_reason": "Tmj Screening",
     "doctor": "Dr. Kumar",
     "type": "BOOKED",
-    "status": "CONFIRMED",
+    "status": "COMPLETED",
     "whatsapp_conf": "SENT"
   },
   "CUST001_2026-04-07_11:00 AM": {
@@ -80,6 +68,18 @@
     "appointment_reason": "Root Canal Treatement",
     "doctor": "Dr. Kumar",
     "type": "BOOKED",
+    "status": "COMPLETED",
+    "whatsapp_conf": "SENT"
+  },
+  "CUST001_2026-04-10_2:15 PM": {
+    "customer_id": "CUST001",
+    "name": "Dhivakar G",
+    "phone": "8610080257",
+    "appointment_date": "2026-04-10",
+    "appointment_time": "2:15 PM",
+    "appointment_reason": "Root Canal Treatement",
+    "doctor": "Dr. Kumar",
+    "type": "PREDICTED",
     "status": "CONFIRMED",
     "whatsapp_conf": "SENT"
   },
@@ -92,20 +92,8 @@
     "appointment_reason": "Porcelain",
     "doctor": "Dr. Smith",
     "type": "BOOKED",
-    "status": "CONFIRMED",
+    "status": "COMPLETED",
     "whatsapp_conf": "SENT"
-  },
-  "CUST001_2026-04-14_11:00 AM": {
-    "customer_id": "CUST001",
-    "name": "Dhivakar G",
-    "phone": "8610080257",
-    "appointment_date": "2026-04-14",
-    "appointment_time": "11:00 AM",
-    "appointment_reason": "Porcelain",
-    "doctor": "Dr. Smith",
-    "type": "PREDICTED",
-    "status": "PENDING",
-    "whatsapp_conf": "PENDING"
   },
   "CUST001_2026-04-20_11:00 AM": {
     "customer_id": "CUST001",
@@ -119,18 +107,6 @@
     "status": "PENDING",
     "whatsapp_conf": "PENDING"
   },
-  "CUST001_2026-04-08_10:30 AM": {
-    "customer_id": "CUST001",
-    "name": "Dhivakar G",
-    "phone": "8610080257",
-    "appointment_date": "2026-04-08",
-    "appointment_time": "10:30 AM",
-    "appointment_reason": "Dental Crown",
-    "doctor": "Dr. Patel",
-    "type": "BOOKED",
-    "status": "CONFIRMED",
-    "whatsapp_conf": "SENT"
-  },
   "CUST001_2026-04-16_10:30 AM": {
     "customer_id": "CUST001",
     "name": "Dhivakar G",
@@ -139,9 +115,9 @@
     "appointment_time": "10:30 AM",
     "appointment_reason": "Dental Crown",
     "doctor": "Dr. Patel",
-    "type": "PREDICTED",
-    "status": "PENDING",
-    "whatsapp_conf": "PENDING"
+    "type": "BOOKED",
+    "status": "CONFIRMED",
+    "whatsapp_conf": "SENT"
   },
   "CUST001_2026-04-11_3:00 PM": {
     "customer_id": "CUST001",
@@ -152,7 +128,7 @@
     "appointment_reason": "Toothache",
     "doctor": "Dr. Smith",
     "type": "BOOKED",
-    "status": "CONFIRMED",
+    "status": "COMPLETED",
     "whatsapp_conf": "SENT"
   },
   "CUST001_2026-04-14_4:00 PM": {
@@ -164,7 +140,7 @@
     "appointment_reason": "regular checkup",
     "doctor": "Dr. Smith",
     "type": "BOOKED",
-    "status": "CONFIRMED",
+    "status": "COMPLETED",
     "whatsapp_conf": "SENT"
   },
   "CUST001_2026-04-13_2:00 PM": {
@@ -176,7 +152,31 @@
     "appointment_reason": "toothache",
     "doctor": "Dr. Patel",
     "type": "BOOKED",
+    "status": "COMPLETED",
+    "whatsapp_conf": "SENT"
+  },
+  "CUST001_2026-04-15_12:00 PM": {
+    "customer_id": "CUST001",
+    "name": "Dhivakar G",
+    "phone": "8610080257",
+    "appointment_date": "2026-04-15",
+    "appointment_time": "12:00 PM",
+    "appointment_reason": "root canal treatment",
+    "doctor": "Dr. Kumar",
+    "type": "BOOKED",
     "status": "CONFIRMED",
     "whatsapp_conf": "SENT"
+  },
+  "CUST001_2026-04-19_4:00 PM": {
+    "customer_id": "CUST001",
+    "name": "Dhivakar G",
+    "phone": "8610080257",
+    "appointment_date": "2026-04-19",
+    "appointment_time": "4:00 PM",
+    "appointment_reason": "root canal treatment",
+    "doctor": "Dr. Kumar",
+    "type": "PREDICTED",
+    "status": "PENDING",
+    "whatsapp_conf": "PENDING"
   }
 }

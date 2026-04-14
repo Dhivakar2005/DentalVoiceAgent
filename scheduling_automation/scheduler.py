@@ -17,6 +17,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta
 
 logger = structlog.get_logger(__name__)
 
@@ -40,7 +41,8 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
         id="sheet_watcher_job",
         name="Customers Sheet Watcher",
         replace_existing=True,
-        max_instances=1
+        max_instances=1,
+        next_run_time=datetime.now(ZoneInfo(TIMEZONE)) + timedelta(seconds=5)
     )
     logger.info("[SCHEDULER] Job 1: Sheet Watcher (30s)")
 
@@ -52,7 +54,8 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
         id="current_reminder_job",
         name="36h Reminder for Confirmed Appointments",
         replace_existing=True,
-        max_instances=1
+        max_instances=1,
+        next_run_time=datetime.now(ZoneInfo(TIMEZONE)) + timedelta(seconds=5)
     )
     logger.info("[SCHEDULER] Job 2: 36h Current Reminder (1h interval)")
 
@@ -64,7 +67,8 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
         id="prediction_notifier_job",
         name="YES/NO Request for Predicted Appointments",
         replace_existing=True,
-        max_instances=1
+        max_instances=1,
+        next_run_time=datetime.now(ZoneInfo(TIMEZONE)) + timedelta(seconds=5)
     )
     logger.info("[SCHEDULER] Job 3: Prediction Notifier (1h interval)")
 
@@ -76,9 +80,22 @@ def build_scheduler(engine, watcher) -> BackgroundScheduler:
         id="morning_reminder_job",
         name="8 AM Same-Day Reminder",
         replace_existing=True,
-        max_instances=1
+        max_instances=1,
+        next_run_time=datetime.now(ZoneInfo(TIMEZONE)) + timedelta(seconds=5)
     )
     logger.info("[SCHEDULER] Job 4: 8 AM Morning Reminder (daily cron)")
+    
+    #  Job 5: Status Cleanup — Mark COMPLETED/EXPIRED (every 1 hour) 
+    scheduler.add_job(
+        func=_safe_run(engine.mark_past_status_updates, "StatusCleanup"),
+        trigger=IntervalTrigger(hours=1),
+        id="status_cleanup_job",
+        name="Mark Past Appointments as Completed/Expired",
+        replace_existing=True,
+        max_instances=1,
+        next_run_time=datetime.now(ZoneInfo(TIMEZONE)) + timedelta(seconds=5)
+    )
+    logger.info("[SCHEDULER] Job 5: Status Cleanup (1h interval)")
 
     return scheduler
 

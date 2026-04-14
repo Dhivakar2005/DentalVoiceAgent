@@ -47,8 +47,8 @@
     "reminder_mode": "SHORT_NOTICE"
   },
   "CUST001_2026-04-16_predicted": {
-    "prediction_status": "PENDING",
-    "prediction_message_sent": false
+    "prediction_status": "CONFIRMED",
+    "prediction_message_sent": true
   },
   "CUST001_2026-04-11_11:00 AM": {
     "confirmation_sent": true,
@@ -72,6 +72,36 @@
     "confirmation_sent": true
   },
   "CUST001_2026-04-13_2:00 PM": {
+    "confirmation_sent": true,
+    "reminder_sent": true,
+    "reminder_mode": "SHORT_NOTICE"
+  },
+  "PRED_CUST001_2026-04-16": {
+    "prediction_message_sent": true,
+    "prediction_status": "CONFIRMED"
+  },
+  "CUST001_2026-04-16_10:30 AM": {
+    "confirmation_sent": true,
+    "reminder_sent": true,
+    "reminder_mode": "NORMAL"
+  },
+  "PRED_CUST001_2026-04-23": {
+    "prediction_message_sent": true,
+    "prediction_status": "CONFIRMED"
+  },
+  "CUST001_2026-04-23_3:00 PM": {
+    "confirmation_sent": true
+  },
+  "CUST001_2026-04-15_4:00 PM": {
+    "confirmation_sent": true,
+    "reminder_sent": true,
+    "reminder_mode": "SHORT_NOTICE"
+  },
+  "CUST001_2026-04-19_predicted": {
+    "prediction_status": "PENDING",
+    "prediction_message_sent": false
+  },
+  "CUST001_2026-04-15_12:00 PM": {
     "confirmation_sent": true,
     "reminder_sent": true,
     "reminder_mode": "SHORT_NOTICE"

@@ -23,6 +23,7 @@ Snapshot format (in-memory + persisted to watcher_snapshot.json):
 import os
 import json
 import pickle
+import time
 import structlog
 from typing import Callable, Optional
 from datetime import datetime
@@ -119,18 +120,28 @@ class SheetWatcher:
     def _fetch_current_rows(self) -> Optional[dict[str, dict]]:
         """
         Read Customers sheet and return dict keyed by appointment key.
-        Also indexed by customer_id for change detection.
-        Returns None if an API error occurs to prevent mass-wiping snapshot.
+        Retries up to 3 times with exponential backoff on network errors.
+        Returns None if all attempts fail (prevents mass-wiping snapshot).
         """
-        try:
-            result = self.service.spreadsheets().values().get(
-                spreadsheetId=self.spreadsheet_id,
-                range=f"{CUSTOMERS_SHEET}!A:K"
-            ).execute()
-            raw = result.get("values", [])
-        except Exception as e:
-            logger.error(f"[WATCHER] Failed to read Customers sheet: {e}")
-            return None
+        max_retries = 3
+        delay = 2  # seconds; doubles after each attempt
+        for attempt in range(1, max_retries + 1):
+            try:
+                result = self.service.spreadsheets().values().get(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"{CUSTOMERS_SHEET}!A:K"
+                ).execute()
+                raw = result.get("values", [])
+                break  # success — exit retry loop
+            except Exception as e:
+                logger.error(f"[WATCHER] Failed to read Customers sheet (attempt {attempt}/{max_retries}): {e}")
+                if attempt < max_retries:
+                    logger.warning(f"[WATCHER] Retrying in {delay}s...")
+                    time.sleep(delay)
+                    delay *= 2
+                else:
+                    logger.warning("[WATCHER] All retry attempts exhausted. Aborting poll.")
+                    return None
 
         if len(raw) <= 1:
             return {}
@@ -140,13 +151,8 @@ class SheetWatcher:
             if not row or len(row) < 5:
                 continue
             
-            # Skip PREDICTED rows — unless they are PENDING (manually confirmed or overridden)
-            # Type is Column I (index 8), WhatsApp is Column K (index 10)
-            type_val      = str(row[8]).strip() if len(row) > 8 else "BOOKED"
-            whatsapp_conf = str(row[10]).strip().upper() if len(row) > 10 else ""
-            
-            if type_val == "PREDICTED" and whatsapp_conf != "PENDING":
-                continue
+            # Include all rows in current snapshot to prevent false deletions.
+            # Triggers (on_new) are handled specifically for PENDING rows below.
 
             r = {
                 "customer_id":        str(row[0]).strip() if len(row) > 0 else "",
@@ -200,19 +206,27 @@ class SheetWatcher:
         
         modifications = []
         for old_key in list(del_keys_set):
-            row = self._snapshot[old_key]
-            cid = row["customer_id"]
+            old_row = self._snapshot[old_key]
+            cid = old_row["customer_id"]
+            phone = old_row.get("phone", "")
+            reason = old_row.get("appointment_reason", "").lower()
             
-            # Find the corresponding new key for this CID that was just created
-            potential_new_keys = [k for k in new_keys_set if current[k]["customer_id"] == cid]
+            # Match candidates by CID + Phone + Reason to be more precise
+            candidates = [
+                k for k in new_keys_set 
+                if current[k]["customer_id"] == cid 
+                and current[k].get("phone", "") == phone
+                and current[k].get("appointment_reason", "").lower() == reason
+            ]
             
-            # If there's exactly one deleted row and one new row for this customer, it's a modification
-            potential_old_keys = [k for k in del_keys_set if self._snapshot[k]["customer_id"] == cid]
+            # If no precise match, fallback to just CID
+            if not candidates:
+                candidates = [k for k in new_keys_set if current[k]["customer_id"] == cid]
             
-            if len(potential_new_keys) == 1 and len(potential_old_keys) == 1:
-                new_key = potential_new_keys[0]
+            if len(candidates) == 1:
+                new_key = candidates[0]
                 new_row = current[new_key]
-                modifications.append((row, new_row))
+                modifications.append((old_row, new_row))
                 
                 new_keys_set.remove(new_key)
                 del_keys_set.remove(old_key)

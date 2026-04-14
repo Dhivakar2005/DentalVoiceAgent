@@ -149,7 +149,7 @@ class AutomationEngine:
 
         If time_str is empty/unparseable, falls back to date-only check.
         """
-        if not date_str:
+        if not date_str or date_str.strip().upper() == "N/A":
             return True
         try:
             tz    = ZoneInfo(TIMEZONE)
@@ -189,7 +189,10 @@ class AutomationEngine:
         Returns None if parsing fails.
         """
         try:
-            appt_date = datetime.strptime(date_str.strip(), "%Y-%m-%d").date()
+            d_str = date_str.strip()
+            if not d_str or d_str.upper() == "N/A":
+                return None
+            appt_date = datetime.strptime(d_str, "%Y-%m-%d").date()
             for fmt in ["%I:%M %p", "%H:%M", "%I:%M%p"]:
                 try:
                     t = datetime.strptime(time_str.strip(), fmt).time()
@@ -297,17 +300,28 @@ class AutomationEngine:
 
         #  PREDICTED vs BOOKED LOGIC 
         # Type is index 8 (Column I) in the raw sheet, but watcher passes it.
-        # Note: watcher might not pass 'type', so we might need to fetch it or rely on context.
-        # Actually, let's just use the status. 
-        # If it's a prediction and it's still PENDING (Status), we let the scheduler handle it.
-        # If it's a prediction but CONFIRMED, we send the notification now.
-        # To be safe, let's fetch the full row data or check if 'type' is in row.
-        type_val   = row.get("type", "BOOKED") # Default to BOOKED if not present
+        type_val   = row.get("type", "BOOKED")          # Default to BOOKED if not present
         status_val = row.get("status", "BOOKED").upper() # Default to BOOKED if not present
         
         if type_val == "PREDICTED" and status_val != "CONFIRMED":
             logger.info(f"[ENGINE] ⏳ Row is PREDICTED/PENDING. Letting scheduler handle it: {cid}")
             return
+
+        # ── BUG-1 FIX: YES-confirmed predicted rows ──────────────────────────
+        # When a PREDICTED row is confirmed via YES reply, _handle_yes sets
+        # I=BOOKED, J=CONFIRMED, K=PENDING.  The watcher then sees this row
+        # as a "new" BOOKED/CONFIRMED row (K=PENDING) and calls on_new_appointment.
+        # We MUST NOT re-send a booking confirmation or generate duplicate
+        # predictions.  Detect this by checking if the pred_key is CONFIRMED.
+        if status_val == "CONFIRMED":
+            pred_key_check = f"PRED_{cid}_{date_}"
+            if self.state.get_prediction_status(pred_key_check) == "CONFIRMED":
+                logger.info(
+                    f"[ENGINE] ✅ Row {cid} | {date_} was confirmed via YES-reply. "
+                    f"Skipping duplicate confirmation. Marking K=SENT."
+                )
+                self._mark_notification_sent(cid, date_, time_)
+                return
 
         logger.info(f"[ENGINE] 🆕 New appointment: {cid} | {name} | {date_} {time_} | {reason} [{type_val}]")
 
@@ -406,6 +420,19 @@ class AutomationEngine:
             )
             self.state.set_reminder_sent(state_key, mode="SHORT_NOTICE")
 
+        # ── BUG-1 FIX: YES-confirmed predicted rows (Modification branch) ──
+        # Same check as on_new_appointment: if this modification is actually a
+        # normalization of a prediction confirmed via YES, skip future-row generation.
+        pred_key_check = f"PRED_{cid}_{date_}"
+        if self.state.get_prediction_status(pred_key_check) == "CONFIRMED":
+            logger.info(
+                f"[ENGINE] ✅ Modification for {cid} | {date_} is a YES-confirmed normalization. "
+                "Skipping duplicate prediction generation."
+            )
+            # Still mark as sent to be safe
+            self._mark_notification_sent(cid, date_, time_)
+            return
+
         # Step 2 — Recalculate future dates from new base date
         info         = get_future_dates_for_reason(reason, date_)
         future_dates = info.get("future_dates", [])
@@ -478,7 +505,9 @@ class AutomationEngine:
             name    = str(row[1]).strip()
             phone   = str(row[2]).strip()
             # USE FUTURE APPT DATE (Col H), fallback to ORIG DATE (Col D)
-            date_   = str(row[7]).strip() if len(row) > 7 and str(row[7]).strip() else str(row[3]).strip()
+            # Skip "N/A" in the future date column
+            fut_date = str(row[7]).strip() if len(row) > 7 else ""
+            date_    = fut_date if fut_date and fut_date.upper() != "N/A" else str(row[3]).strip()
             time_   = str(row[4]).strip() if len(row) > 4 else ""
             reason  = str(row[5]).strip()
             type_   = str(row[8]).strip()
@@ -536,8 +565,19 @@ class AutomationEngine:
             cid    = str(row[0]).strip()
             name   = str(row[1]).strip()
             phone  = str(row[2]).strip()
-            # USE FUTURE APPT DATE (Col H), fallback to ORIG DATE (Col D)
-            date_  = str(row[7]).strip() if len(row) > 7 and str(row[7]).strip() else str(row[3]).strip()
+
+            # ── BUG-3 FIX: Use Col H (Future Appt Date) when set; fall back to
+            # Col D (appointment_date) for PREDICTED rows that were written with
+            # only Col D populated (watcher snapshot key is CID_DATE_TIME).
+            fut_date = str(row[7]).strip() if len(row) > 7 else ""
+            orig_date = str(row[3]).strip() if len(row) > 3 else ""
+            if fut_date and fut_date.upper() not in ("N/A", ""):
+                date_ = fut_date
+            elif orig_date and orig_date.upper() not in ("N/A", ""):
+                date_ = orig_date
+            else:
+                continue  # no usable date
+
             reason = str(row[5]).strip() if len(row) > 5 else ""
             type_  = str(row[8]).strip()
             status = str(row[9]).strip()
@@ -545,15 +585,29 @@ class AutomationEngine:
             if type_ != "PREDICTED" or status != "PENDING":
                 continue
 
-            # Predictions treat them as 10 AM for calculation
+            # Predictions treat them as 10 AM for window calculation
             appt_dt = self._parse_appt_datetime(date_, "10:00 AM")
             if not appt_dt: continue
 
             if not (window_start <= appt_dt <= window_end):
                 continue
 
-            # State key for prediction uniqueness
+            # State key for prediction uniqueness (keyed on the actual visit date)
             pred_key = f"PRED_{cid}_{date_}"
+
+            # ── BUG-3 FIX: If Col K (WhatsApp) is NOT 'SENT', the message was
+            # never truly delivered — reset stale prediction_message_sent flag.
+            whatsapp_col = str(row[10]).strip().upper() if len(row) > 10 else ""
+            if whatsapp_col != "SENT" and self.state.is_prediction_message_sent(pred_key):
+                logger.warning(
+                    f"[ENGINE] ⚠️ State says sent but sheet Col K is not SENT for "
+                    f"{pred_key}. Resetting flag to re-send."
+                )
+                # Reset so we re-send below
+                if pred_key in self.state._data:
+                    self.state._data[pred_key]["prediction_message_sent"] = False
+                    self.state._save()
+
             # Check if prediction was already sent or handled
             if self.state.is_prediction_message_sent(pred_key):
                 continue
@@ -584,15 +638,67 @@ class AutomationEngine:
             ):
                 self.state.set_prediction_message_sent(pred_key)
                 self.state.set_prediction_status(pred_key, "PENDING")
-                # Mark as SENT in sheet (Column K)
-                row_idx = self._find_prediction_row(cid, date_)
+                # Mark as SENT in sheet (Column K) — search by Col D or Col H
+                row_idx = self._find_prediction_row_flexible(cid, date_)
                 if row_idx:
-                    self.service.spreadsheets().values().update(
-                        spreadsheetId=self.spreadsheet_id,
-                        range=f"{CUSTOMERS_SHEET}!K{row_idx}",
-                        valueInputOption="RAW",
-                        body={"values": [["SENT"]]}
-                    ).execute()
+                    try:
+                        self.service.spreadsheets().values().update(
+                            spreadsheetId=self.spreadsheet_id,
+                            range=f"{CUSTOMERS_SHEET}!K{row_idx}",
+                            valueInputOption="RAW",
+                            body={"values": [["SENT"]]}
+                        ).execute()
+                    except Exception as ku_e:
+                        logger.error(f"[ENGINE] Failed to mark K{row_idx} SENT: {ku_e}")
+
+    #  MANAGEMENT Workflows (Batch/Status updates) 
+
+    def mark_past_status_updates(self):
+        """
+        Scans all appointments and marks:
+          1. CONFIRMED/BOOKED rows as COMPLETED if time has passed.
+          2. PENDING/PREDICTED rows as EXPIRED if date is in the past (and were notified).
+        This serves as a catch-up mechanism after server downtime.
+        """
+        logger.info("[ENGINE] 🧹 Running status cleanup (COMPLETED/EXPIRED check)...")
+        try:
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"{CUSTOMERS_SHEET}!A:K"
+            ).execute()
+            rows = result.get("values", [])[1:]  # skip header
+        except Exception as e:
+            logger.error(f"[ENGINE] Failed to read Customers for status cleanup: {e}")
+            return
+
+        for i, row in enumerate(rows, start=2):
+            if len(row) < 10:
+                continue
+            cid    = str(row[0]).strip()
+            name   = str(row[1]).strip()
+            # USE FUTURE APPT DATE (Col H), fallback to ORIG DATE (Col D)
+            fut_date = str(row[7]).strip() if len(row) > 7 else ""
+            date_    = fut_date if fut_date and fut_date.upper() != "N/A" else str(row[3]).strip()
+            time_    = str(row[4]).strip() if len(row) > 4 else "TBD"
+            type_    = str(row[8]).strip().upper()
+            status   = str(row[9]).strip().upper()
+            
+            # Logic 1: Mark BOOKED/CONFIRMED as COMPLETED
+            if type_ == "BOOKED" and status == "CONFIRMED":
+                if self._is_past_datetime(date_, time_):
+                    logger.info(f"[ENGINE] ✅ Appointment COMPLETED → {cid} | {date_} {time_}")
+                    self._update_row_status(i, "BOOKED", "COMPLETED")
+            
+            # Logic 2: Mark PREDICTED/PENDING as EXPIRED
+            elif type_ == "PREDICTED" and status == "PENDING":
+                # Only expire if it was already notified (Col K == SENT)
+                whatsapp_col = str(row[10]).strip().upper() if len(row) > 10 else ""
+                if whatsapp_col == "SENT" and self._is_past_datetime(date_, "23:59"): # End of day check for predictions
+                    logger.info(f"[ENGINE] ⚠️ Prediction EXPIRED → {cid} | {date_} (notified)")
+                    self._update_row_status(i, "PREDICTED", "EXPIRED")
+                    # Cascade cancel future sittings linked to this treatment plan
+                    orig_date = str(row[3]).strip() # Col D
+                    self._cascade_cancel_predictions(cid, orig_date, date_)
 
     #  Workflow 6: Same-Day 8 AM Reminders 
 
@@ -621,7 +727,8 @@ class AutomationEngine:
             name   = str(row[1]).strip()
             phone  = str(row[2]).strip()
             # USE FUTURE APPT DATE (Col H), fallback to ORIG DATE (Col D)
-            date_  = str(row[7]).strip() if len(row) > 7 and str(row[7]).strip() else str(row[3]).strip()
+            fut_date = str(row[7]).strip() if len(row) > 7 else ""
+            date_    = fut_date if fut_date and fut_date.upper() != "N/A" else str(row[3]).strip()
             time_  = str(row[4]).strip() if len(row) > 4 else "TBD"
             reason = str(row[5]).strip() if len(row) > 5 else ""
             type_  = str(row[8]).strip()
@@ -630,20 +737,10 @@ class AutomationEngine:
             if date_ != today_str:
                 continue
 
-            # NEW: Mark same-day PENDING predictions as EXPIRED ONLY IF
-            # a WhatsApp notification was already sent for them (Col K == SENT).
-            # Un-notified PREDICTED rows are left untouched so the patient
-            # still has a chance to be contacted in a later run.
+            # Use consolidated logic for status expiry
             if type_ == "PREDICTED" and status == "PENDING":
-                whatsapp_col = str(row[10]).strip().upper() if len(row) > 10 else ""
-                if whatsapp_col == "SENT":
-                    logger.info(f"[ENGINE] ⚠️ Prediction EXPIRED → {cid} | {name} | {date_} (notified)")
-                    self._update_row_status(i, "PREDICTED", "EXPIRED")
-                    # CASCADE: Cancel future sittings for this plan
-                    orig_date = str(row[3]).strip()  # Column D
-                    self._cascade_cancel_predictions(cid, orig_date, date_)
-                else:
-                    logger.info(f"[ENGINE] 🔔 Prediction on {date_} for {cid} not yet notified — skipping expiry")
+                # We let mark_past_status_updates handle this, but for the 8 AM run,
+                # we only want to remind for ACTIVE ones.
                 continue
 
             # Only remind for BOOKED/CONFIRMED (confirmed means they said YES previously)
@@ -729,7 +826,7 @@ class AutomationEngine:
         send_fallback(phone, lang=detected_lang)
 
     def _find_prediction_row(self, cid: str, date_str: str) -> Optional[int]:
-        """Find row index for a specific prediction."""
+        """Find row index for a specific prediction by Col H (Future Appt Date)."""
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id, range=f"{CUSTOMERS_SHEET}!A:K"
@@ -740,6 +837,28 @@ class AutomationEngine:
                 if len(r) >= 9 and str(r[0]) == cid and str(r[7]) == date_str and r[8] == "PREDICTED":
                     return i
         except Exception: pass
+        return None
+
+    def _find_prediction_row_flexible(self, cid: str, date_str: str) -> Optional[int]:
+        """
+        Find row index for a PREDICTED row by matching Col H (Future Appt Date)
+        OR Col D (appointment_date) when Col H is N/A.
+        This handles both pre-normalization (H=date) and direct-write (D=date, H=N/A) cases.
+        """
+        try:
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id, range=f"{CUSTOMERS_SHEET}!A:K"
+            ).execute()
+            rows = result.get("values", [])
+            for i, r in enumerate(rows[1:], start=2):
+                if len(r) < 9 or str(r[0]).strip() != cid or r[8] != "PREDICTED":
+                    continue
+                fut_d  = str(r[7]).strip() if len(r) > 7 else ""
+                orig_d = str(r[3]).strip() if len(r) > 3 else ""
+                if fut_d == date_str or (fut_d.upper() in ("N/A", "") and orig_d == date_str):
+                    return i
+        except Exception as e:
+            logger.error(f"[ENGINE] _find_prediction_row_flexible error: {e}")
         return None
 
     def _update_row_status(self, row_idx: int, type_str: str, status_str: str):
@@ -831,14 +950,23 @@ class AutomationEngine:
     def _handle_yes(self, phone: str, clean_phone: str, ctx: dict, user_time: Optional[str] = None):
         """
         Patient confirmed YES for a predicted appointment.
+
+        Actions:
+          1. Validate the predicted date is still in the future.
+          2. Find the row in Customers sheet (by CID + future_date, Type=PREDICTED).
+          3. Update I=BOOKED, J=CONFIRMED, K=PENDING.
+          4. Normalize: move future_date → Col D, write time → Col E, set H=N/A.
+          5. Update state + clear pending store.
+          6. Send YES confirmation WhatsApp message.
         """
         cid         = ctx.get("customer_id", "")
         name        = ctx.get("name", "")
         future_date = ctx.get("future_date", "")
         reason      = ctx.get("reason", "")
         pred_key    = ctx.get("pred_key", "")
-        
-        # Priority: use extraction from WhatsApp message, else TBD
+        lang        = ctx.get("lang", "en")
+
+        # Priority: use time extracted from WhatsApp message, else TBD
         appt_time = user_time if user_time else "TBD"
 
         # Safety: ensure predicted date is still in future
@@ -847,57 +975,54 @@ class AutomationEngine:
             send_fallback(phone)
             return
 
-        # Update row in Customers sheet
+        # Find the PREDICTED row for this CID + future_date
         row_idx = self._find_prediction_row(cid, future_date)
         if row_idx:
-            logger.info(f"[ENGINE] ✅ YES confirmed: updating row {row_idx} for {cid} | {future_date} at {appt_time}")
-            # Update Status, Type and WhatsApp Conf
+            logger.info(f"[ENGINE] ✅ YES confirmed: row {row_idx} | {cid} | {future_date} at {appt_time}")
             try:
-                # Type(I) -> BOOKED, Status(J) -> CONFIRMED, WhatsApp(K) -> PENDING
+                # Step 1: Mark BOOKED / CONFIRMED / PENDING
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
                     range=f"{CUSTOMERS_SHEET}!I{row_idx}:K{row_idx}",
                     valueInputOption="RAW",
                     body={"values": [["BOOKED", "CONFIRMED", "PENDING"]]}
                 ).execute()
+
+                # Step 2: Normalize — move future_date into Col D (actual visit date)
+                #         Write confirmed time into Col E.
+                #         Scheduler reminders check Col H first, fall back to Col D.
+                #         Setting H=N/A forces scheduler to use the newly-set Col D.
+                time_to_write = appt_time if appt_time != "TBD" else "10:00 AM"
+                self.service.spreadsheets().values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"{CUSTOMERS_SHEET}!D{row_idx}:E{row_idx}",
+                    valueInputOption="RAW",
+                    body={"values": [[future_date, time_to_write]]}
+                ).execute()
+
+                # Step 3: Clear Future Appt Date Col H → N/A
+                self.service.spreadsheets().values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"{CUSTOMERS_SHEET}!H{row_idx}",
+                    valueInputOption="RAW",
+                    body={"values": [["N/A"]]}
+                ).execute()
+
+                logger.info(f"[ENGINE] ✅ Row {row_idx} normalized → D={future_date}, E={time_to_write}, H=N/A")
             except Exception as e:
-                logger.error(f"[ENGINE] Failed to confirm prediction row {row_idx}: {e}")
-                
-            # Also update Time Column (E, index 4) if we have one
-            if appt_time != "TBD":
-                try:
-                    self.service.spreadsheets().values().update(
-                        spreadsheetId=self.spreadsheet_id,
-                        range=f"{CUSTOMERS_SHEET}!E{row_idx}",
-                        valueInputOption="RAW",
-                        body={"values": [[appt_time]]}
-                    ).execute()
-                except Exception as e:
-                    logger.error(f"[ENGINE] Failed to update time: {e}")
+                logger.error(f"[ENGINE] ❌ Failed to confirm/normalize row {row_idx}: {e}")
+        else:
+            logger.warning(f"[ENGINE] [WARN] No PREDICTED row found for {cid} | {future_date}")
 
-        # Update state
+        # Update prediction state
         if pred_key:
             self.state.set_prediction_status(pred_key, "CONFIRMED")
 
-        # Remove from pending
+        # Remove from pending store (before WA send so failures don't re-trigger)
         if clean_phone in self._pending:
             del self._pending[clean_phone]
             _save_pending(self._pending)
 
-        # Send confirmation with reason
-        send_yes_confirmation(phone, name, future_date, appt_time, reason)
-
-        # No longer clear from Future_Appointments as it's the same sheet
-        # self.fa.clear_confirmed_future_date(cid, future_date)
-
-        # Update state
-        if pred_key:
-            self.state.set_prediction_status(pred_key, "CONFIRMED")
-
-        # Remove from pending
-        if clean_phone in self._pending:
-            del self._pending[clean_phone]
-            _save_pending(self._pending)
-
-        # Send TYPE-A confirmation with actual date/time and reason
-        send_yes_confirmation(phone, name, future_date, "TBD", reason)
+        # Send YES confirmation WhatsApp message with the correct time
+        send_yes_confirmation(phone, name, future_date, appt_time, reason, lang=lang)
+        logger.info(f"[ENGINE] ✅ YES flow complete for {cid} | {future_date} at {appt_time}")

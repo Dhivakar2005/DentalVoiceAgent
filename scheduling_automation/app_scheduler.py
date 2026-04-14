@@ -35,10 +35,11 @@ sys.path.insert(0, ROOT)
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(ROOT, ".env"))
 
+from flask import Flask
 from scheduling_automation.automation_engine import AutomationEngine
 from scheduling_automation.sheet_watcher     import SheetWatcher
 from scheduling_automation.scheduler         import build_scheduler
-from scheduling_automation.webhook_server    import app as flask_app, set_engine
+from scheduling_automation.webhook_server    import register_automation_routes
 
 WEBHOOK_PORT = int(os.getenv("SCHEDULER_PORT", "5001"))
 TIMEZONE     = "Asia/Kolkata"
@@ -69,13 +70,15 @@ def main():
     scheduler.start()
     logger.info("[STARTUP] ✅ Scheduler running")
 
-    #  Step 4: Inject engine into webhook server ─
-    set_engine(engine)
+    #  Step 4: Initialize mini Flask server for webhooks
+    flask_app = Flask(__name__)
+    register_automation_routes(flask_app, engine)
 
     #  Step 5: Run an initial check immediately 
-    logger.info("[STARTUP] Running initial sheet scan...")
+    logger.info("[STARTUP] Running initial sheet scan and status catch-up...")
     try:
-        watcher.check_for_changes()
+        engine.mark_past_status_updates()  # Catch-up completed/expired
+        watcher.check_for_changes()       # Catch-up new/modified rows
     except Exception as e:
         logger.warning(f"[STARTUP] Initial scan warning (non-fatal): {e}")
 
